@@ -10,18 +10,18 @@ import math
 from astropy.io import fits
 import pickle
 
-def sum_wavefronts(filename,load=True,legacy=True):
+def sum_wavefronts(filename,savedir='/Volumes/Backup-Plus/',load=True,legacy=True):
     """sums over # of wavefronts in each timestep for a given hdf5 file, returns hdf5 file.
     NOTE: attributes are currently lost in transition, will add in future update. in the meantime,
     make sure your f_in is descriptive"""
     """legacy = true means that there are individual keys for each timestep instead of 1 HDF5 file"""
     filename_parts = filename.split("/")
     nameonly = filename_parts[-1]
-    print('file will be saved as',"summed-"+nameonly)
+    print('file will be saved at',savedir+"summed-"+nameonly)
 
     #open file
     f_in = h5py.File(filename, 'r')
-    f_out = h5py.File('summed-'+nameonly, 'w')
+    f_out = h5py.File(savedir+'summed-'+nameonly, 'w')
 
     if legacy==True:
         #make list of keys in correct order
@@ -36,7 +36,7 @@ def sum_wavefronts(filename,load=True,legacy=True):
         print('output has',np.shape(f_out),'timesteps and spatial dimensions',np.shape(f_out['t0']))
 
     if legacy==False:
-        if load=True:
+        if load==True:
             f = h5py.File(f_in)
             data = f['data']
             summed = np.sum(data,axis=3)
@@ -199,7 +199,7 @@ def iter_spatial_cov(f_in,summed=True,start=100,end=150,return_mean=False):
         else:
            return corr
 
-def full_spacetime_cov(f_in,spatial_cov,lag,summed=True,start=100,end=150):
+def full_spacetime_cov(f_in,spatial_cov,lag,summed=True,start=100,end=150,reshape=False):
     """get spatial covariance for a given lag from an hdf5 data set, with option to use file not summed over 
     number of wavefronts"""
 
@@ -220,7 +220,8 @@ def full_spacetime_cov(f_in,spatial_cov,lag,summed=True,start=100,end=150):
     norm = np.outer(stdev,stdev)
     corr = cov/norm
     print('maximum of full st cov (normalized) is',np.max(corr))
-    corr = np.reshape(corr,[nx,ny,nx,ny])
+    if reshape==True:
+        corr = np.reshape(corr,[nx,ny,nx,ny])
 
     return corr
 

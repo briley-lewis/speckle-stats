@@ -1,3 +1,5 @@
+###this is implemented for the older version of MEDIS saves!
+
 ##step 1: import relevant modules
 import os
 import numpy as np
@@ -8,43 +10,49 @@ import math
 from astropy.io import fits
 import pickle
 
-def sum_wavefronts(f_in,to_intensity=False,load=True):
+def sum_wavefronts(filename,load=True,legacy=True):
     """sums over # of wavefronts in each timestep for a given hdf5 file, returns hdf5 file.
     NOTE: attributes are currently lost in transition, will add in future update. in the meantime,
     make sure your f_in is descriptive"""
+    """legacy = true means that there are individual keys for each timestep instead of 1 HDF5 file"""
+    filename_parts = filename.split("/")
+    nameonly = filename_parts[-1]
+    print('file will be saved as',"summed-"+nameonly)
+
     #open file
-    #f_in = h5py.File(f_in, 'r')
+    f_in = h5py.File(filename, 'r')
+    f_out = h5py.File('summed-'+nameonly, 'w')
 
-    #make list of keys in correct order
-    #n_screens = np.arange(0,len(f_in.keys()))
-    #keys = ['t' + str(n) for n in n_screens]
-    #print('starting with',keys[0])
+    if legacy==True:
+        #make list of keys in correct order
+        n_screens = np.arange(0,len(f_in.keys()))
+        keys = ['t' + str(n) for n in n_screens]
+        print('starting with',keys[0])
+        
+        summed=[]
+        for key in keys:
+            frame = np.sum(f_in[key],axis=2)
+            f_out.create_dataset(key,data=frame)
+        print('output has',np.shape(f_out),'timesteps and spatial dimensions',np.shape(f_out['t0']))
 
-    #if to_intensity==True:
-        #would be cool to implement functionality where I could save intensities, 
-        #but then that wouldn't be compatible with my other definitions so maybe not
-       #pass
+    if legacy==False:
+        if load=True:
+            f = h5py.File(f_in)
+            data = f['data']
+            summed = np.sum(data,axis=3)
+            f_out.create_dataset('data',data=summed)
+            print('data saved with dimensions',summed)
 
-    f_out = h5py.File('summed'+f_in, 'w')
-
-    if load=True:
-        f = h5py.File(f_in)
-        data = f['data']
-        summed = np.sum(data,axis=3)
-        print(np.shape(summed))
+        else:
+            print('NotImplementedError')
     
-    #iterative not fully implemented yet
-    #with f = h5py.File(f_in):
-        #data_set = f['data']
-        #shape = np.shape(data_set)
-            #for i in range(len(shape[0])):
-                #frame=data_set[i,:,:,:,:,:]
-                #frame=np.sum(frame,axis=3)
-    
-    f_out.create_dataset(key,data=frame)
-
-    print('data saved with dimensions',summed)
-    print('save name is','summed-'+f_in+'.h5')
+        #iterative not fully implemented yet
+        #with f = h5py.File(f_in):
+            #data_set = f['data']
+            #shape = np.shape(data_set)
+                #for i in range(len(shape[0])):
+                    #frame=data_set[i,:,:,:,:,:]
+                    #frame=np.sum(frame,axis=3)
 
     f_out.close()
 

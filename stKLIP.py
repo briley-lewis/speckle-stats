@@ -239,6 +239,22 @@ def iter_stcov_matrix(f_in,nlag,start,end,legacy=False):
 
     return cov
 
+def iterative_eigendecomp(filename,legacy=False):
+	"""considered implemented an iterative algorithm for eigendecomposition / PCA since that is also computationally heavy; considered NIPALS, but did not implement due to need for manually created stcov matrix"""
+	print('not implemented - could use NIPALS algorithm?')
+
+def eigendecomp(cov,max_ev):
+	"""eigendecomposition using scipy eigh - max_ev sets the maximum number of eigenvalues computed (e.g. max_ev = 100 means we only keep the 100 largest ev)"""
+	ev0, P0 = eigh(cov,subset_by_index=[-max_ev,-1])
+    print('eigendecomposition complete')
+
+    #reverse arrays so they're in descending order
+    ev0 = ev0[::-1]
+    P0 = P0[:,::-1]
+    print('rearrangement complete')
+
+    return ev0,P0
+
 def nipals(n_real,n_var):
     "Nonlinear iterative partial least-squares approach to PCA --- NOT USED"
     pass
@@ -406,14 +422,33 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,iterative=True,return_all=False,**kwa
 	    return averaged
 
 
+
+
 ##### wrappers / higher level functions
 
-def iterative_eigendecomp(filename,legacy=False):
-	"""considered implemented an iterative algorithm for eigendecomposition / PCA since that is also computationally heavy; considered NIPALS, but did not implement due to need for manually created stcov matrix"""
-	print('not implemented - could use NIPALS algorithm?')
+def run_stKLIP(filename,nlag,nmode,window=[1,-1],legacy=False):
+	"runs stKLIP once for one mode one lag"
+	name = filename.split('.')[0]
+	start = window[0]
+	end = window[1]
 
-def eigendecomp(stcov_matrix,max_ev):
-	pass
+	print('creating stcov matrix for {} lags'.format(nlag))
+	stcov_matrix = iter_stcov_matrix(filename,nlag,start,end)
+
+	print('doing eigendecomposition')
+	ev0, P0 = eigendecomp(stcov_matrix,max_ev=(nmode+1))
+
+	print('computing overall image mean')
+	mean = iter_mean(filename,start,end)
+
+	print('data residuals will be saved to {}_avg-res_{}-lags_{}-modes.fits'.format(name,nlag,nmode))
+	print('running stKLIP for {} modes'.format(nmode))
+	avg_res = stKLIP(ev0,P0,filename,num_ev=nmode,seq_len=nlag,mean_img=mean)
+	print('stKLIP completed for {} modes'.format(nmode))
+
+	###SAVE TO FILE
+	print('LAG {} FINISHED - averaged residuals saved to file at {}_avg-res_{}-lags_{}-modes.fits'.format(name,nlag,nmode))
+
 
 def model_grid(filename,nlags,nmodes,window=[1,-1],legacy=False):
 	"""future function / wrapper for testing over multiple lags + modes. nlags is an array of lags to test, nmodes is a number of modes to test at each lag"""
@@ -447,3 +482,10 @@ def model_grid(filename,nlags,nmodes,window=[1,-1],legacy=False):
 		print('LAG {} FINISHED - averaged residuals saved to file at {}_avg-res_{}-lags.fits'.format(nlag,name,nlag))
 
 	print('run complete')
+
+
+
+
+	###for running from command line
+	if __name__ == '__main__':
+		main()

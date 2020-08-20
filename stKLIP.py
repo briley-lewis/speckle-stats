@@ -45,7 +45,7 @@ def load_full(filename,legacy=False):
     else:
     	print('data import error')
 
-def iter_mean(f_in,start,end):
+def iter_mean(f_in,start,end,arr_start=0):
     """get the mean image from an hdf5 dataset, iterative approach"""
     #open file
     f_in = h5py.File(f_in, 'r')
@@ -55,7 +55,7 @@ def iter_mean(f_in,start,end):
     #iterate through to compute mean
     mn_im = np.zeros((size,size)) #initializing array with same spatial dimensions
     k = 0
-    for num in np.arange(1,np.shape(data)[0]): ##exclude first frame of zeros from file initialization
+    for num in np.arange(arr_start,np.shape(data)[0]): ##exclude first frame of zeros from file initialization
     	frame = data[num,1,0,:,start:end,start:end]
 	    frame = np.sum(frame,axis=3)
 	    intensity = np.abs(frame)**2
@@ -416,8 +416,8 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,iterative=True,return_all=False,**kwa
 
 	    print('stklip done, beginning averaging process')
 	    ##compute iterative mean on subtracteds
-	    averaged = iter_mean('{}_subtracteds-ev{}-seq{}.h5'.format(filename,num_ev,seq_len),start,end) ##start and end should be global variables when running this~ not the best implementation?
-	    print('average residuals calculated')
+	    averaged = iter_mean('{}_subtracteds-ev{}-seq{}.h5'.format(filename,num_ev,seq_len),start,end,arr_start=1) ##start and end should be global variables when running this~ not the best implementation?
+	    print('average residuals calculated -- not yet saved on disk')
 
 	    return averaged
 
@@ -485,7 +485,17 @@ def model_grid(filename,nlags,nmodes,window=[1,-1],legacy=False):
 
 
 
+###later analysis functions!
 
-	###for running from command line
-	if __name__ == '__main__':
-		main()
+def SNR():
+	"""computes signal to noise ratio"""
+	pass
+
+def contrast_curve():
+	"""computes contrast curve for a given residual"""
+	pass
+
+
+###for running from command line
+if __name__ == '__main__':
+	main()

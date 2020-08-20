@@ -45,21 +45,29 @@ def load_full(filename,legacy=False,window=[1,-1]):
 	else:
 		print('data import error')
 
-def iter_mean(f_in,start,end,arr_start=0):
+def iter_mean(f_in,start,end,secondary=False):
 	"""get the mean image from an hdf5 dataset, iterative approach"""
 	#open file
 	f_in = h5py.File(f_in, 'r')
 	data = f_in['data']
-	shape=np.shape(data[0,0,0,0,start:end,start:end])
+	print(np.shape(data))
+	if secondary==True:
+		arr_start=1
+		shape=np.shape(data)
+	if secondary==False:
+		arr_start=0
+		shape=np.shape(data[0,0,0,0,start:end,start:end])
 	size = shape[-1]
 	
 	#iterate through to compute mean
 	mn_im = np.zeros((size,size)) #initializing array with same spatial dimensions
 	k = 0
 	for num in np.arange(arr_start,np.shape(data)[0]): ##exclude first frame of zeros from file initialization
-		frame = data[num,1,0,:,start:end,start:end]
-		frame = np.sum(frame,axis=0)
-		intensity = np.abs(frame)**2
+		if secondary==False:
+			frame = data[num,1,0,:,start:end,start:end]
+			frame = np.sum(frame,axis=0)
+			intensity = np.abs(frame)**2
+		intensity = data[num,:,:]
 		k = k+1
 		mn_im = ((k-1)*mn_im + intensity)/k
 
@@ -140,7 +148,6 @@ def iter_cov2d(f_in,lag,start,end,legacy=False,return_mean=False,verbose=True):
 		mn_im = np.zeros((n,)) # initialize
 		cov = np.empty((n,n))
 		vv = np.empty((n,n))
-		intensities = []
 		k = 0
 
 		for k in range(lag,shape[0]-lag):
@@ -153,7 +160,6 @@ def iter_cov2d(f_in,lag,start,end,legacy=False,return_mean=False,verbose=True):
 				framek = np.sum(framek_orig,axis=0)
 				ik = np.abs(framek)**2
 				ik = np.reshape(ik,n) #image at k step
-				intensities.append(ik)
 				framekm1 = data[k-lag,1,0,:,start:end,start:end]
 				framekm1 = np.sum(framekm1,axis=0)
 				ikm1 = np.abs(framekm1)**2
@@ -224,7 +230,7 @@ def iter_stcov_matrix(filename,nlag,start,end,legacy=False):
 	print(nlag,npix)
 	#if ((nlag*npix*32)**2)>5e11:
 		#print('WARNING: SIZE TOO BIG CANNOT HOLD IN MEMORY')
-	cov = np.full((nlag*npix,nlag*npix),np.nan)
+	cov = np.full((nlag*npix,nlag*npix),np.nan) ###consider writing to hdf5 file, would enable larger windows and larger nlag. not needed though since eigendecom is bigger bottleneck
 	print('cov matrix shell made')
 	i = 0
 	j = 1
@@ -317,10 +323,21 @@ def nipals(n_real,n_var):
 
 	return ev, P""",
 
-def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,iterative=True,return_all=False,**kwargs):
+def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,-1],iterative=True,return_all=False,**kwargs):
 	"""given a set of eigenvalues and eigenvectors, this runs the rest of KLIP over the *whole* image sequence (not just one image subsequence.
 	returns the averaged residuals, and also the whole set of subtracted images and model images. IF USING ITERATIVE, PLEASE SUPPLY MEAN FROM ITERATIVE COV CALC AS KWARG 'mean_img'"""
+	start = window[0]
+	end = window[1]
+	mean_img = kwargs['mean_img']
+
 	if iterative==False:
+		filename = f_in.split('.')[0]
+		f_in = h5py.File(f_in, 'r')
+		print('file opened')
+		data = f_in['data']
+		full_seq = data[:,1,0,:,start:end,start:end]
+		full_seq=np.sum(full_seq,axis=1)
+		full_seq = np.abs(full_seq)**2
 		mean_img = np.mean(full_seq,axis=0) ###won't work for iterative
 		central_index = int(np.median(np.arange(0,seq_len)))
 		#print('for subsequence length',seq_len,'central image has index',central_index)
@@ -374,17 +391,17 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,iterative=True,return_all=False,**kwa
 		#print('for subsequence length',seq_len,'central image has index',central_index)
 		
 		##initialize save files
-		test_seq = full_seq[0,start:end,start:end]
+		test_seq = full_seq[0,1,0,0,start:end,start:end]
 		models = h5py.File('{}_models-ev{}-seq{}.h5'.format(filename,num_ev,seq_len), 'w')
 		subtracteds = h5py.File('{}_subtracteds-ev{}-seq{}.h5'.format(filename,num_ev,seq_len), 'w')
-		models.create_dataset('data', data=np.zeros(0,np.shape(test_seq)[0],np.shape(test_seq)[1]), compression="gzip", chunks=True,maxshape=(None, None, None))
+		models.create_dataset('data', data=np.zeros((0,np.shape(test_seq)[0],np.shape(test_seq)[1])), compression="gzip", chunks=True,maxshape=(None, None, None))
 		models.close()
-		subtracteds.create_dataset('data', data=np.zeros(0,np.shape(test_seq)[0],np.shape(test_seq)[1]), compression="gzip", chunks=True,maxshape=(None, None, None))
+		subtracteds.create_dataset('data', data=np.zeros((0,np.shape(test_seq)[0],np.shape(test_seq)[1])), compression="gzip", chunks=True,maxshape=(None, None, None))
 		subtracteds.close()
 
 		#reopen for adding on
 		models = h5py.File('{}_models-ev{}-seq{}.h5'.format(filename,num_ev,seq_len), 'a')
-		subtracteds = h5py.File('{}_models-ev{}-seq{}.h5'.format(filename,num_ev,seq_len), 'a')
+		subtracteds = h5py.File('{}_subtracteds-ev{}-seq{}.h5'.format(filename,num_ev,seq_len), 'a')
 
 		#add attributes from original hdf5 simulation
 		att_count = 0
@@ -398,7 +415,10 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,iterative=True,return_all=False,**kwa
 		
 		while (i+seq_len-1)<np.shape(full_seq)[0]:
 			
-			target_seq = full_seq[i:i+seq_len,:,:]
+			target_seq = full_seq[i:i+seq_len,1,0,:,start:end,start:end]
+			target_seq = np.sum(target_seq,axis=1)
+			target_seq = np.abs(target_seq)**2
+			#print(start,end)
 
 			#choose target image - we're going with one, the "central" image (2 in a series of 5 lags)
 			ms_target_seq = target_seq - mean_img
@@ -423,7 +443,7 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,iterative=True,return_all=False,**kwa
 			subtracted = (central_img-central_model)
 			subtracteds["data"].resize((subtracteds["data"].shape[0] + 1), axis = 0)
 			subtracteds["data"][index,:,:] = subtracted
-			#print('central image',(i+central_index),'done')
+			print('central image',(i+central_index),'done')
 			
 			i=i+1
 	   
@@ -435,7 +455,7 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,iterative=True,return_all=False,**kwa
 
 		print('stklip done, beginning averaging process')
 		##compute iterative mean on subtracteds
-		averaged = iter_mean('{}_subtracteds-ev{}-seq{}.h5'.format(filename,num_ev,seq_len),start,end,arr_start=1) ##start and end should be global variables when running this~ not the best implementation?
+		averaged = iter_mean('{}_subtracteds-ev{}-seq{}.h5'.format(filename,num_ev,seq_len),start,end,secondary=True) ##start and end should be global variables when running this~ not the best implementation?
 		print('average residuals calculated -- not yet saved on disk')
 
 		return averaged
@@ -445,7 +465,7 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,iterative=True,return_all=False,**kwa
 
 ##### wrappers / higher level functions
 
-def run_stKLIP(filename,nlag,nmode,window=[1,-1],legacy=False):
+def run_stKLIP(filename,nlag,nmode,window=[0,-1],legacy=False):
 	"runs stKLIP once for one mode one lag"
 	name = filename.split('.')[0]
 	f_in = h5py.File(filename,'r')
@@ -493,7 +513,7 @@ def run_stKLIP(filename,nlag,nmode,window=[1,-1],legacy=False):
 	modes.close()
 
 
-def model_grid(filename,nlags,nmodes,window=[1,-1],legacy=False):
+def model_grid(filename,nlags,nmodes,window=[0,-1],legacy=False):
 	"""future function / wrapper for testing over multiple lags + modes. nlags is an array of lags to test, nmodes is a number of modes to test at each lag"""
 	name = filename.split('.')[0]
 	f_in = h5py.File(filename,'r')

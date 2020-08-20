@@ -347,7 +347,7 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,iterative=True,return_all=False,**kwa
 	        
 	    averaged = np.average(subtracteds,axis=0)
 
-	    print('averaged not saved on disk!')
+	    print('nothing saved on disk!')
 	    if return_all==True:
 	    	return averaged, subtracteds, models
 	    else:
@@ -375,6 +375,15 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,iterative=True,return_all=False,**kwa
 		#reopen for adding on
 		models = h5py.File('{}_models-ev{}-seq{}.h5'.format(filename,num_ev,seq_len), 'a')
 		subtracteds = h5py.File('{}_models-ev{}-seq{}.h5'.format(filename,num_ev,seq_len), 'a')
+
+		#add attributes from original hdf5 simulation
+		att_count = 0
+		for key in f_in.attrs:
+    		models.attrs[key] = attributes[key]
+    		subtracteds.attrs[key] = attributes[key]
+    		att_count = att_count+1
+    	print(att_count,'attributes written to file')
+
 	    i=0
 	    
 	    while (i+seq_len-1)<np.shape(full_seq)[0]:
@@ -429,6 +438,7 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,iterative=True,return_all=False,**kwa
 def run_stKLIP(filename,nlag,nmode,window=[1,-1],legacy=False):
 	"runs stKLIP once for one mode one lag"
 	name = filename.split('.')[0]
+	f_in = h5py.File(filename,'r')
 	start = window[0]
 	end = window[1]
 
@@ -447,12 +457,32 @@ def run_stKLIP(filename,nlag,nmode,window=[1,-1],legacy=False):
 	print('stKLIP completed for {} modes'.format(nmode))
 
 	###SAVE TO FILE
+	modes = h5py.File('{}_avg-res_{}-lags.h5'.format(name,nlag), 'w')
+	modes.create_dataset('data', avg_res, compression="gzip")
+	modes.attrs['modes']= nmodes.insert(0,np.nan)
+	modes.attrs['lag']=nlag
+	if window==[1,-1]:
+	  	modes.attrs['window']='full simulation'
+	else:
+	   	modes.attrs['window']=window
+	modes.attrs['input_file']=filename
+	modes.attrs['method']='Load Full'
+	att_count = 5
+	for key in f_in.attrs:
+    	modes.attrs[key] = attributes[key]
+    	att_count = att_count+1
+    print(att_count,'attributes written to file')
+	modes.close()
 	print('LAG {} FINISHED - averaged residuals saved to file at {}_avg-res_{}-lags_{}-modes.fits'.format(name,nlag,nmode))
+
+	#save to fits cube for easy viewing
+	print('also saved in fits format as {}_avg-res_{}-lags.h5'.format(nlag,name,nlag))
 
 
 def model_grid(filename,nlags,nmodes,window=[1,-1],legacy=False):
 	"""future function / wrapper for testing over multiple lags + modes. nlags is an array of lags to test, nmodes is a number of modes to test at each lag"""
 	name = filename.split('.')[0]
+	f_in = h5py.File(filename,'r')
 	start = window[0]
 	end = window[1]
 
@@ -466,20 +496,43 @@ def model_grid(filename,nlags,nmodes,window=[1,-1],legacy=False):
 
 		print('computing overall image mean')
 		mean = iter_mean(filename,start,end)
+		shape = np.shape(mean)
 
-		##initialize fits
-		print('data residuals will be saved to {}_avg-res_{}-lags.fits'.format(name,nlag))
+		##initialize save file
+		modes = h5py.File('{}_avg-res_{}-lags.h5'.format(name,nlag), 'w')
+	    modes.create_dataset('data', data=np.zeros(0,shape[0],shape[1]), compression="gzip", chunks=True,maxshape=(None, None, None))
+	    modes.attrs['modes']= nmodes.insert(0,np.nan)
+	    modes.attrs['lag']=nlag
+	    if window==[1,-1]:
+	    	modes.attrs['window']='full simulation'
+	    else:
+	    	modes.attrs['window']=window
+	    modes.attrs['input_file']=filename
+	    modes.attrs['method']='Iterative'
+	    att_count = 5
+			for key in f_in.attrs:
+    		modes.attrs[key] = attributes[key]
+    		att_count = att_count+1
+    	print(att_count,'attributes written to file')
+		modes.close()
+		print('data residuals will be saved to {}_avg-res_{}-lags.h5'.format(name,nlag))
 
 		for mode in nmodes:
 			print('running stKLIP for {} modes'.format(mode))
 			avg_res = stKLIP(ev0,P0,filename,num_ev=mode,seq_len=nlag,mean_img=mean)
 			print('stKLIP completed for {} modes'.format(mode))
 
-			###add slice to fits; somehow include KL mode in header?
+			###add slice to file; somehow include KL mode in header?
+			index = modes["data"].shape[0]-1
+	        modes["data"].resize((modes["data"].shape[0] + 1), axis = 0)
+    		modes["data"][index,:,:] = avg_res
 			print('slice for {} modes saved to disk'.format(mode))
 
-		######implement save to file - would be great to save all modes to different slices of fits cube
-		print('LAG {} FINISHED - averaged residuals saved to file at {}_avg-res_{}-lags.fits'.format(nlag,name,nlag))
+		modes.close()
+		print('LAG {} FINISHED - averaged residuals all saved to file at {}_avg-res_{}-lags.h5'.format(nlag,name,nlag))
+
+		#save to fits cube for easy viewing 
+		print('also saved in fits format as {}_avg-res_{}-lags.h5'.format(nlag,name,nlag))
 
 	print('run complete')
 

@@ -8,7 +8,7 @@ from scipy.linalg import eigh
 ##### basic functions
 #####no guarantees the legacy version is fully functional!! it was for an older version of MEDIS files, kind of a workaround
 
-def load_full(filename,legacy=False,window=[1,-1]):
+def load_full(filename,legacy=False,window=[0,256]):
 	"""loads in full file - do NOT use this for large files!"""
 	#import file
 	f_in = h5py.File(filename, 'r')
@@ -67,7 +67,8 @@ def iter_mean(f_in,start,end,secondary=False):
 			frame = data[num,1,0,:,start:end,start:end]
 			frame = np.sum(frame,axis=0)
 			intensity = np.abs(frame)**2
-		intensity = data[num,:,:]
+		else:
+			intensity = data[num,:,:]
 		k = k+1
 		mn_im = ((k-1)*mn_im + intensity)/k
 
@@ -261,7 +262,10 @@ def iterative_eigendecomp(filename,legacy=False):
 
 def eigendecomp(cov,max_ev):
 	"""eigendecomposition using scipy eigh - max_ev sets the maximum number of eigenvalues computed (e.g. max_ev = 100 means we only keep the 100 largest ev)"""
-	ev0, P0 = eigh(cov,subset_by_index=[-max_ev,-1])
+	first_ev = np.shape(cov)[0]-1
+	last_ev = np.shape(cov)[0]-max_ev
+	print(last_ev,first_ev)
+	ev0, P0 = eigh(cov,subset_by_index=[last_ev,first_ev])
 	print('eigendecomposition complete')
 
 	#reverse arrays so they're in descending order
@@ -323,7 +327,7 @@ def nipals(n_real,n_var):
 
 	return ev, P""",
 
-def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,-1],iterative=True,return_all=False,**kwargs):
+def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,256],iterative=True,return_all=False,**kwargs):
 	"""given a set of eigenvalues and eigenvectors, this runs the rest of KLIP over the *whole* image sequence (not just one image subsequence.
 	returns the averaged residuals, and also the whole set of subtracted images and model images. IF USING ITERATIVE, PLEASE SUPPLY MEAN FROM ITERATIVE COV CALC AS KWARG 'mean_img'"""
 	start = window[0]
@@ -415,17 +419,21 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,-1],iterative=True,return_a
 		
 		while (i+seq_len-1)<np.shape(full_seq)[0]:
 			
+			print(np.shape(full_seq))
 			target_seq = full_seq[i:i+seq_len,1,0,:,start:end,start:end]
 			target_seq = np.sum(target_seq,axis=1)
 			target_seq = np.abs(target_seq)**2
-			#print(start,end)
+			print(np.shape(target_seq))
+			print(np.shape(mean_img))
 
 			#choose target image - we're going with one, the "central" image (2 in a series of 5 lags)
 			ms_target_seq = target_seq - mean_img
 			seq_len,img_shape,img_shape2 = np.shape(target_seq)
 
 			#choose modes
-			chosen_ev = np.reshape(P0[0:num_ev],[num_ev,seq_len*img_shape*img_shape]) 
+			print(num_ev,seq_len,img_shape)
+			print(np.shape(P0))
+			chosen_ev = np.reshape(P0[:,0:num_ev],[num_ev,seq_len*img_shape*img_shape]) 
 			chosen_evals = ev0[0:num_ev]
 
 			#get image coefficients
@@ -465,7 +473,7 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,-1],iterative=True,return_a
 
 ##### wrappers / higher level functions
 
-def run_stKLIP(filename,nlag,nmode,window=[0,-1],legacy=False):
+def run_stKLIP(filename,nlag,nmode,window=[0,256],legacy=False):
 	"runs stKLIP once for one mode one lag"
 	name = filename.split('.')[0]
 	f_in = h5py.File(filename,'r')
@@ -489,9 +497,11 @@ def run_stKLIP(filename,nlag,nmode,window=[0,-1],legacy=False):
 	###SAVE TO FILE
 	modes = h5py.File('{}_avg-res_{}-lags.h5'.format(name,nlag), 'w')
 	modes.create_dataset('data', avg_res, compression="gzip")
-	modes.attrs['modes']= nmodes.insert(0,np.nan)
+	list_modes=nmode.copy()
+	list_modes.insert(0,np.nan)
+	modes.attrs['modes']= list_modes
 	modes.attrs['lag']=nlag
-	if window==[1,-1]:
+	if window==[0,256]:
 	  	modes.attrs['window']='full simulation'
 	else:
 	   	modes.attrs['window']=window
@@ -513,7 +523,7 @@ def run_stKLIP(filename,nlag,nmode,window=[0,-1],legacy=False):
 	modes.close()
 
 
-def model_grid(filename,nlags,nmodes,window=[0,-1],legacy=False):
+def model_grid(filename,nlags,nmodes,window=[0,256],legacy=False):
 	"""future function / wrapper for testing over multiple lags + modes. nlags is an array of lags to test, nmodes is a number of modes to test at each lag"""
 	name = filename.split('.')[0]
 	f_in = h5py.File(filename,'r')
@@ -529,15 +539,18 @@ def model_grid(filename,nlags,nmodes,window=[0,-1],legacy=False):
 		ev0, P0 = eigendecomp(stcov_matrix,max_ev=(nmodes[-1]+5))
 
 		print('computing overall image mean')
-		mean = iter_mean(filename,start,end)
+		mean = iter_mean(filename,start,end,secondary=False)
 		shape = np.shape(mean)
+
 
 		##initialize save file
 		modes = h5py.File('{}_avg-res_{}-lags.h5'.format(name,nlag), 'w')
-		modes.create_dataset('data', data=np.zeros(0,shape[0],shape[1]), compression="gzip", chunks=True,maxshape=(None, None, None))
-		modes.attrs['modes']= nmodes.insert(0,np.nan)
+		modes.create_dataset('data', data=np.zeros((0,shape[0],shape[1])), compression="gzip", chunks=True,maxshape=(None, None, None))
+		list_modes=nmodes.copy()
+		list_modes.insert(0,np.nan)
+		modes.attrs['modes']= list_modes
 		modes.attrs['lag']=nlag
-		if window==[1,-1]:
+		if window==[0,256]:
 			modes.attrs['window']='full simulation'
 		else:
 			modes.attrs['window']=window
@@ -556,7 +569,7 @@ def model_grid(filename,nlags,nmodes,window=[0,-1],legacy=False):
 
 		for mode in nmodes:
 			print('running stKLIP for {} modes'.format(mode))
-			avg_res = stKLIP(ev0,P0,filename,num_ev=mode,seq_len=nlag,mean_img=mean)
+			avg_res = stKLIP(ev0,P0,filename,num_ev=mode,seq_len=nlag,mean_img=mean,window=[start,end])
 			print('stKLIP completed for {} modes'.format(mode))
 
 			###add slice to file; somehow include KL mode in header?
@@ -567,10 +580,12 @@ def model_grid(filename,nlags,nmodes,window=[0,-1],legacy=False):
 			averaged.append(avg_res)
 
 		attributes = modes.attrs
-		print('LAG {} FINISHED - averaged residuals all saved to file at {}_avg-res_{}-lags.h5'.format(name,nlag))
+		print(nlag)
+		print('LAG {} FINISHED - averaged residuals all saved to file at {}_avg-res_{}-lags.h5'.format(nlag,name,nlag))
 
 		#save to fits cube for easy viewing 
 		hdr = fits.Header(attributes)
+		averaged=np.asarray(averaged)
 		fits.writeto('{}_avg-res_{}-lags.fits'.format(name,nlag),averaged,header=hdr)
 		print('also saved in fits format as {}_avg-res_{}-lags.fits'.format(name,nlag))
 		modes.close()

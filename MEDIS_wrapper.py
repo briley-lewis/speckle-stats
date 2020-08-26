@@ -4,7 +4,7 @@ sys.path.insert(0,'/u/home/b/blewis34/MEDIS/Proper')
 sys.path.insert(0,'/u/home/b/blewis34/MEDIS/Proper/proper')
 sys.path.insert(0,'/u/home/b/blewis34/MEDIS/medis')
 sys.path.insert(0,'/u/home/b/blewis34/MEDIS')
-import medis.Detector.get_photon_data as gpd
+import medis.save_photon_data as gpd
 from medis.params import ap, tp, sp, iop
 import numpy as np
 import matplotlib.pyplot as plt

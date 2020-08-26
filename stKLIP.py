@@ -4,6 +4,10 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.linalg import eigh
+import sys
+
+savedir='/Users/blewis/Desktop/grad-school/Research/Speckle-Stats/Outputs/new-stKLIP/'
+datadir='/Users/blewis/Desktop/grad-school/Research/Speckle-Stats/'
 
 ##### basic functions
 #####no guarantees the legacy version is fully functional!! it was for an older version of MEDIS files, kind of a workaround
@@ -11,7 +15,7 @@ from scipy.linalg import eigh
 def load_full(filename,legacy=False,window=[0,256]):
 	"""loads in full file - do NOT use this for large files!"""
 	#import file
-	f_in = h5py.File(filename, 'r')
+	f_in = h5py.File(datadir+filename, 'r')
 
 	if legacy==True:
 	##FOR OLD FILE FORMAT
@@ -48,13 +52,16 @@ def load_full(filename,legacy=False,window=[0,256]):
 def iter_mean(f_in,start,end,secondary=False):
 	"""get the mean image from an hdf5 dataset, iterative approach"""
 	#open file
-	f_in = h5py.File(f_in, 'r')
-	data = f_in['data']
-	print(np.shape(data))
 	if secondary==True:
+		f_in = h5py.File(savedir+f_in, 'r')
+		data = f_in['data']
+		print(np.shape(data))
 		arr_start=1
 		shape=np.shape(data)
 	if secondary==False:
+		f_in = h5py.File(datadir+f_in, 'r')
+		data = f_in['data']
+		print(np.shape(data))
 		arr_start=0
 		shape=np.shape(data[0,0,0,0,start:end,start:end])
 	size = shape[-1]
@@ -90,7 +97,7 @@ def cov2d(intensities,lag=0):
 def iter_cov2d(f_in,lag,start,end,legacy=False,return_mean=False,verbose=True):
 	if legacy==True:
 		#open file
-		f_in = h5py.File(f_in, 'r')
+		f_in = h5py.File(datadir+f_in, 'r')
 		print('file opened')
 		
 		#make list of keys in correct order
@@ -140,7 +147,7 @@ def iter_cov2d(f_in,lag,start,end,legacy=False,return_mean=False,verbose=True):
 
 	else:
 		#open file
-		f_in = h5py.File(f_in, 'r')
+		f_in = h5py.File(datadir+f_in, 'r')
 		data = f_in['data']
 		shape = np.shape(data[:,0,0,0,start:end,start:end])
 
@@ -222,7 +229,7 @@ def stcov_matrix(img,nlag):
 
 def iter_stcov_matrix(filename,nlag,start,end,legacy=False):
 	"""creates larger block diagonal covariance matrix out of smaller single lag covariance matrices"""
-	f_in = h5py.File(filename, 'r')
+	f_in = h5py.File(datadir+filename, 'r')
 	data = f_in['data']
 	shape = np.shape(data[0,0,0,0,start:end,start:end])
 	f_in.close()
@@ -262,15 +269,20 @@ def iterative_eigendecomp(filename,legacy=False):
 
 def eigendecomp(cov,max_ev):
 	"""eigendecomposition using scipy eigh - max_ev sets the maximum number of eigenvalues computed (e.g. max_ev = 100 means we only keep the 100 largest ev)"""
+	if max_ev=='all':
+		max_ev = np.shape(cov)[0]
 	first_ev = np.shape(cov)[0]-1
 	last_ev = np.shape(cov)[0]-max_ev
-	print(last_ev,first_ev)
+	print('calculating eigenvectors',first_ev,'through',last_ev)
 	ev0, P0 = eigh(cov,subset_by_index=[last_ev,first_ev])
 	print('eigendecomposition complete')
 
 	#reverse arrays so they're in descending order
 	ev0 = ev0[::-1]
 	P0 = P0[:,::-1]
+	P0 = P0.T
+	#P0.shape = max_ev,nl,nx,ny
+	#print(np.shape(P0))
 	print('rearrangement complete')
 
 	return ev0,P0
@@ -336,7 +348,7 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,256],iterative=True,return_
 
 	if iterative==False:
 		filename = f_in.split('.')[0]
-		f_in = h5py.File(f_in, 'r')
+		f_in = h5py.File(datadir+f_in, 'r')
 		print('file opened')
 		data = f_in['data']
 		full_seq = data[:,1,0,:,start:end,start:end]
@@ -387,7 +399,7 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,256],iterative=True,return_
 	if iterative==True:
 		
 		filename = f_in.split('.')[0]
-		f_in = h5py.File(f_in, 'r')
+		f_in = h5py.File(datadir+f_in, 'r')
 		print('file opened')
 		full_seq = f_in['data']
 
@@ -396,16 +408,16 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,256],iterative=True,return_
 		
 		##initialize save files
 		test_seq = full_seq[0,1,0,0,start:end,start:end]
-		models = h5py.File('{}_models-ev{}-seq{}.h5'.format(filename,num_ev,seq_len), 'w')
-		subtracteds = h5py.File('{}_subtracteds-ev{}-seq{}.h5'.format(filename,num_ev,seq_len), 'w')
+		models = h5py.File(savedir+'{}_models-ev{}-seq{}.h5'.format(filename,num_ev,seq_len), 'w')
+		subtracteds = h5py.File(savedir+'{}_subtracteds-ev{}-seq{}.h5'.format(filename,num_ev,seq_len), 'w')
 		models.create_dataset('data', data=np.zeros((0,np.shape(test_seq)[0],np.shape(test_seq)[1])), compression="gzip", chunks=True,maxshape=(None, None, None))
 		models.close()
 		subtracteds.create_dataset('data', data=np.zeros((0,np.shape(test_seq)[0],np.shape(test_seq)[1])), compression="gzip", chunks=True,maxshape=(None, None, None))
 		subtracteds.close()
 
 		#reopen for adding on
-		models = h5py.File('{}_models-ev{}-seq{}.h5'.format(filename,num_ev,seq_len), 'a')
-		subtracteds = h5py.File('{}_subtracteds-ev{}-seq{}.h5'.format(filename,num_ev,seq_len), 'a')
+		models = h5py.File(savedir+'{}_models-ev{}-seq{}.h5'.format(filename,num_ev,seq_len), 'a')
+		subtracteds = h5py.File(savedir+'{}_subtracteds-ev{}-seq{}.h5'.format(filename,num_ev,seq_len), 'a')
 
 		#add attributes from original hdf5 simulation
 		att_count = 0
@@ -431,9 +443,7 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,256],iterative=True,return_
 			seq_len,img_shape,img_shape2 = np.shape(target_seq)
 
 			#choose modes
-			print(num_ev,seq_len,img_shape)
-			print(np.shape(P0))
-			chosen_ev = np.reshape(P0[:,0:num_ev],[num_ev,seq_len*img_shape*img_shape]) 
+			chosen_ev = np.reshape(P0[0:num_ev],[num_ev,seq_len*img_shape*img_shape]) 
 			chosen_evals = ev0[0:num_ev]
 
 			#get image coefficients
@@ -474,9 +484,9 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,256],iterative=True,return_
 ##### wrappers / higher level functions
 
 def run_stKLIP(filename,nlag,nmode,window=[0,256],legacy=False):
-	"runs stKLIP once for one mode one lag"
+	"runs stKLIP once for one mode one lag -- not tested, use model_grid instead"
 	name = filename.split('.')[0]
-	f_in = h5py.File(filename,'r')
+	f_in = h5py.File(datadir+filename,'r')
 	start = window[0]
 	end = window[1]
 
@@ -495,7 +505,7 @@ def run_stKLIP(filename,nlag,nmode,window=[0,256],legacy=False):
 	print('stKLIP completed for {} modes'.format(nmode))
 
 	###SAVE TO FILE
-	modes = h5py.File('{}_avg-res_{}-lags.h5'.format(name,nlag), 'w')
+	modes = h5py.File(savedir+'{}_avg-res_{}-lags.h5'.format(name,nlag), 'w')
 	modes.create_dataset('data', avg_res, compression="gzip")
 	list_modes=nmode.copy()
 	list_modes.insert(0,np.nan)
@@ -517,7 +527,7 @@ def run_stKLIP(filename,nlag,nmode,window=[0,256],legacy=False):
 	#save to fits cube for easy viewing
 	attributes = modes.attrs
 	hdr = fits.Header(attributes)
-	fits.writeto('{}_avg-res_{}-lags_single-mode.fits'.format(name,nlag),avg_res,header=hdr)
+	fits.writeto(savedir+'{}_avg-res_{}-lags_single-mode.fits'.format(name,nlag),avg_res,header=hdr,overwrite=True)
 	print('also saved in fits format as {}_avg-res_{}-lags.fits'.format(name,nlag))
 	f_in.close()
 	modes.close()
@@ -526,7 +536,7 @@ def run_stKLIP(filename,nlag,nmode,window=[0,256],legacy=False):
 def model_grid(filename,nlags,nmodes,window=[0,256],legacy=False):
 	"""future function / wrapper for testing over multiple lags + modes. nlags is an array of lags to test, nmodes is a number of modes to test at each lag"""
 	name = filename.split('.')[0]
-	f_in = h5py.File(filename,'r')
+	f_in = h5py.File(datadir+filename,'r')
 	start = window[0]
 	end = window[1]
 
@@ -536,7 +546,7 @@ def model_grid(filename,nlags,nmodes,window=[0,256],legacy=False):
 		stcov_matrix = iter_stcov_matrix(filename,nlag,start,end)
 
 		print('doing eigendecomposition')
-		ev0, P0 = eigendecomp(stcov_matrix,max_ev=(nmodes[-1]+5))
+		ev0, P0 = eigendecomp(stcov_matrix,max_ev=(nmodes[-1]+5)) ##weird nmodes thing here ensures that there are more ev calculated than modes we want to use
 
 		print('computing overall image mean')
 		mean = iter_mean(filename,start,end,secondary=False)
@@ -544,7 +554,7 @@ def model_grid(filename,nlags,nmodes,window=[0,256],legacy=False):
 
 
 		##initialize save file
-		modes = h5py.File('{}_avg-res_{}-lags.h5'.format(name,nlag), 'w')
+		modes = h5py.File(savedir+'{}_avg-res_{}-lags.h5'.format(name,nlag), 'w')
 		modes.create_dataset('data', data=np.zeros((0,shape[0],shape[1])), compression="gzip", chunks=True,maxshape=(None, None, None))
 		list_modes=nmodes.copy()
 		list_modes.insert(0,np.nan)
@@ -554,7 +564,7 @@ def model_grid(filename,nlags,nmodes,window=[0,256],legacy=False):
 			modes.attrs['window']='full simulation'
 		else:
 			modes.attrs['window']=window
-		modes.attrs['input_file']=filename
+		#modes.attrs['input_file']=filename
 		modes.attrs['method']='Iterative'
 		att_count = 5
 		for key in f_in.attrs:
@@ -564,29 +574,33 @@ def model_grid(filename,nlags,nmodes,window=[0,256],legacy=False):
 		modes.close()
 		print('data residuals will be saved to {}_avg-res_{}-lags.h5'.format(name,nlag))
 		#reopen for addition
-		modes = h5py.File('{}_avg-res_{}-lags.h5'.format(name,nlag), 'a')
+		modes = h5py.File(savedir+'{}_avg-res_{}-lags.h5'.format(name,nlag), 'a')
 		averaged = []
 
 		for mode in nmodes:
-			print('running stKLIP for {} modes'.format(mode))
-			avg_res = stKLIP(ev0,P0,filename,num_ev=mode,seq_len=nlag,mean_img=mean,window=[start,end])
-			print('stKLIP completed for {} modes'.format(mode))
+			if mode=='nan' or np.isnan(mode)==True or mode=='np.nan':
+				pass
+			else:
+				print('running stKLIP for {} modes'.format(mode))
+				avg_res = stKLIP(ev0,P0,filename,num_ev=mode,seq_len=nlag,mean_img=mean,window=[start,end])
+				print('stKLIP completed for {} modes'.format(mode))
 
-			###add slice to file; somehow include KL mode in header?
-			index = modes["data"].shape[0]-1
-			modes["data"].resize((modes["data"].shape[0] + 1), axis = 0)
-			modes["data"][index,:,:] = avg_res
-			print('slice for {} modes saved to disk'.format(mode))
-			averaged.append(avg_res)
+				###add slice to file; somehow include KL mode in header?
+				index = modes["data"].shape[0]-1
+				modes["data"].resize((modes["data"].shape[0] + 1), axis = 0)
+				modes["data"][index,:,:] = avg_res
+				print('slice for {} modes saved to disk'.format(mode))
+				averaged.append(avg_res)
 
-		attributes = modes.attrs
-		print(nlag)
 		print('LAG {} FINISHED - averaged residuals all saved to file at {}_avg-res_{}-lags.h5'.format(nlag,name,nlag))
 
 		#save to fits cube for easy viewing 
-		hdr = fits.Header(attributes)
+		hdr = fits.Header()
+		for key in modes.attrs:
+			hdr[key] = str(modes.attrs[key])
+			print(key,str(modes.attrs[key]))
 		averaged=np.asarray(averaged)
-		fits.writeto('{}_avg-res_{}-lags.fits'.format(name,nlag),averaged,header=hdr)
+		fits.writeto(savedir+'{}_avg-res_{}-lags.fits'.format(name,nlag),averaged,header=hdr,overwrite=True)
 		print('also saved in fits format as {}_avg-res_{}-lags.fits'.format(name,nlag))
 		modes.close()
 
@@ -608,5 +622,30 @@ def contrast_curve():
 
 
 ###for running from command line
+
+def stringtolist(string):
+	splits = string.split(',')
+	print(splits)
+	values=[]
+	for i in splits:
+		values.append(int(i))
+	return values
+
 if __name__ == '__main__':
-	main()
+	input_file = sys.argv[1]
+	print('running stKLIP for',datadir+input_file)
+	print('outputs will write to',savedir)
+	lag_string = sys.argv[2]
+	input_lags = stringtolist(lag_string)
+	print("lags:",input_lags)
+	print(type(input_lags),type(input_lags[0]))
+	mode_string = sys.argv[3]
+	input_modes = stringtolist(mode_string)
+	print("modes:",input_modes)
+	window_string = sys.argv[4]
+	input_window = stringtolist(window_string)
+	print("window:",input_window)
+	model_grid(input_file,input_lags,input_modes,window=input_window)
+
+
+

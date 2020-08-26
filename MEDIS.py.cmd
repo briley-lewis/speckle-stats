@@ -8,7 +8,7 @@
 #  error           = Merged with joblog
 #$ -j y
 #  The following items pertain to the user program
-#  user program    = /u/home/b/blewis34/MEDIS/examples/MEDIS_wrapper.py
+#  user program    = /u/home/b/blewis34/speckle-stats/MEDIS_wrapper.py
 #  arguments       = 
 #  program input   = Specified by user program
 #  program output  = Specified by user program
@@ -30,17 +30,17 @@
   unalias *
   set qqversion = 
   set qqapp     = "job serial"
-  set qqidir    = /u/home/b/blewis34/MEDIS/examples
+  set qqidir    = /u/home/b/blewis34/speckle-stats
   set qqjob     = MEDIS_wrapper.py
-  set qqodir    = /u/home/b/blewis34/MEDIS/examples
-  cd     /u/home/b/blewis34/MEDIS/examples
+  set qqodir    = /u/home/b/blewis34/speckle-stats
+  cd     /u/home/b/blewis34/speckle-stats
   source /u/local/bin/qq.sge/qr.runtime
   if ($status != 0) exit (1)
 #
   echo "UGE job for MEDIS_wrapper.py"
   echo ""
   echo "  script directory:"
-  echo "    "/u/home/b/blewis34/MEDIS/examples
+  echo "    "/u/home/b/blewis34/speckle-stats
   echo "  Submitted to UGE:"
   echo "    "$qqsubmit
   echo "  SCRATCH directory:"
@@ -60,7 +60,7 @@
 #
   echo MEDIS_wrapper.py "" \>\& MEDIS.output.$JOB_ID
   echo ""
-  /usr/bin/time python3 /u/home/b/blewis34/MEDIS/examples/MEDIS_wrapper.py >& /u/home/b/blewis34/job-outputs/MEDIS.output.$JOB_ID
+  /usr/bin/time python3 /u/home/b/blewis34/speckle-stats/MEDIS_wrapper.py >& /u/home/b/blewis34/job-outputs/MEDIS.output.$JOB_ID
 #
   echo ""
   echo "script finished at:  "` date `

@@ -4,7 +4,7 @@
 #$ -cwd
 #  input           = /dev/null
 #  output          = /u/home/b/blewis34/job-outputs/MEDIS.joblog.$JOB_ID
-#$ -o /u/home/b/blewis34/job-outputs/MEDIS.py.joblog.$JOB_ID
+#$ -o /u/home/b/blewis34/job-outputs/MEDIS.joblog.$JOB_ID
 #  error           = Merged with joblog
 #$ -j y
 #  The following items pertain to the user program
@@ -14,7 +14,7 @@
 #  program output  = Specified by user program
 #  Resources requested
 #
-#$ -l h_data=24000M,h_rt=24:00:00
+#$ -l h_data=16000M,h_rt=12:00:00
 # #
 #  Name of application for log
 #$ -v QQAPP=job

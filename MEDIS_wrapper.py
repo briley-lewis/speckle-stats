@@ -14,9 +14,9 @@ import os
 np.random.seed(seed=0)
 
 ##set astro parameters
-ap.companion=False #is there a planet in there?
-ap.sample_time = 0.003 #exposure time in [s]
-ap.numframes = 50
+ap.companion=True #is there a planet in there?
+ap.sample_time = 0.005 #exposure time in [s]
+ap.numframes = 200
 ap.grid_size = 128*2
 ap.contrast = [5e-3]
 ap.star_spec = None
@@ -26,7 +26,7 @@ ap.star_spec = None
 tp.use_spiders = False #spiders off/on
 tp.obscure = False #no spiders, no secondary
 tp.use_ao = False #AO off/on
-tp.servo_error = [0.005,1]
+#tp.servo_error = [0.005,1] ##only relevant if trying AO!
 tp.piston_error = False #piston error off/on
 tp.use_coron = True #coronagraph off/on
 tp.occulter_type = 'Vortex' #occulter type - vortex, none, gaussian, 8th_Order, None (Lyot Stop)
@@ -45,14 +45,14 @@ sp.show_cube = False
 #atmos params -- all currently set to defaults
 cp.model = 'single'  # single|hcipy_standard|evolving
 cp.show_caosparams= True  # for control over all other variables
-cp.cn = 1.29e-15 #lower cn2 should mean less turbulence - this value is equivalent to r0~30 (>>D)
+cp.cn = 1e-14 #lower cn2 should mean less turbulence - this value is equivalent to r0~30 (>>D)
 cp.L0 = 10 #longer L0 (coherence length) means less turbulent, I think
 cp.v = np.asarray([5,0])
 cp.h = 100
 
 iop.update("complex-fields/")
 ###SET FILE SAVE NAME
-iop.fields = os.path.join(iop.testdir, 'MEDIS_short_Aug2020.h5'.format(ap.numframes))
+iop.fields = os.path.join(iop.testdir, 'MEDIS_short_Aug2020.h5')
 
 if __name__ == '__main__':
 	gpd.run_medis()

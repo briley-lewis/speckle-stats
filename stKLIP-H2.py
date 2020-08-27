@@ -598,9 +598,17 @@ def model_grid(filename,nlags,nmodes,window=[0,256],legacy=False):
 
 		#save to fits cube for easy viewing 
 		hdr = fits.Header()
-		for key in modes.attrs:
-			hdr[key] = str(modes.attrs[key])
-			print(key,str(modes.attrs[key]))
+		hdr['modes']= list_modes
+		hdr['lag']=nlag
+		if window==[0,256]:
+			hdr['window']='full simulation'
+		else:
+			hdr['window']=window
+		#modes.attrs['input_file']=filename
+		hdr['method']='Iterative'
+		#for key in modes.attrs:
+			#hdr[key] = str(modes.attrs[key])
+			#print(key,str(modes.attrs[key]))
 		averaged=np.asarray(averaged)
 		fits.writeto(savedir+'{}_avg-res_{}-lags.fits'.format(name,nlag),averaged,header=hdr,overwrite=True)
 		print('also saved in fits format as {}_avg-res_{}-lags.fits'.format(name,nlag))

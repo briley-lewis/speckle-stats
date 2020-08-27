@@ -62,7 +62,7 @@
   echo ""
 
 #PUT SIM PARAMS HERE
-  /usr/bin/time python3 /u/home/b/blewis34/speckle-stats/stKLIP-H2.py FILE LAGS MODES WINDOW >& /u/home/b/blewis34/job-outputs/stKLIP.output.$JOB_ID
+  /usr/bin/time python3 /u/home/b/blewis34/speckle-stats/stKLIP-H2.py MEDIS_short_Aug2020_WITHATTRS.h5 2,5 5,10 75,125 >& /u/home/b/blewis34/job-outputs/stKLIP.output.$JOB_ID
 #
   echo ""
   echo "script finished at:  "` date `

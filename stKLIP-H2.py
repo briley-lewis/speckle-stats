@@ -8,8 +8,8 @@ import sys
 sys.path.insert(0,'/u/scratch/b/blewis34/medis_data/observations/complex-fields/')
 sys.path.insert(0,'/u/home/b/blewis34/speckle-stats/')
 
-savedir='/u/scratch/b/blewis34/stKLIP'
-datadir='/u/scratch/b/blewis34/medis_data/observations/complex-fields'
+savedir='/u/scratch/b/blewis34/stKLIP/'
+datadir='/u/scratch/b/blewis34/medis_data/observations/complex-fields/'
 
 ##### basic functions
 #####no guarantees the legacy version is fully functional!! it was for an older version of MEDIS files, kind of a workaround

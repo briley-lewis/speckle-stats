@@ -598,12 +598,12 @@ def model_grid(filename,nlags,nmodes,window=[0,256],legacy=False):
 
 		#save to fits cube for easy viewing 
 		hdr = fits.Header()
-		hdr['modes']= list_modes
-		hdr['lag']=nlag
+		hdr['modes']= str(list_modes)
+		hdr['lag']=str(nlag)
 		if window==[0,256]:
 			hdr['window']='full simulation'
 		else:
-			hdr['window']=window
+			hdr['window']=str(window)
 		#modes.attrs['input_file']=filename
 		hdr['method']='Iterative'
 		#for key in modes.attrs:

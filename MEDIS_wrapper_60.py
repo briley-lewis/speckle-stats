@@ -52,7 +52,7 @@ cp.h = 100
 
 iop.update("complex-fields/")
 ###SET FILE SAVE NAME
-iop.fields = os.path.join(iop.testdir, 'MEDIS_30sec_Aug2020.h5')
+iop.fields = os.path.join(iop.testdir, 'MEDIS_60sec_Aug2020.h5')
 
 if __name__ == '__main__':
 	gpd.run_medis()

@@ -16,7 +16,7 @@ np.random.seed(seed=0)
 ##set astro parameters
 ap.companion=True #is there a planet in there?
 ap.sample_time = 0.005 #exposure time in [s]
-ap.numframes = 200
+ap.numframes = 2000
 ap.grid_size = 128*2
 ap.contrast = [5e-3]
 ap.star_spec = None
@@ -52,7 +52,7 @@ cp.h = 100
 
 iop.update("complex-fields/")
 ###SET FILE SAVE NAME
-iop.fields = os.path.join(iop.testdir, 'MEDIS_short_Aug2020_WITHATTRS.h5')
+iop.fields = os.path.join(iop.testdir, 'MEDIS_10sec_Aug2020.h5')
 
 if __name__ == '__main__':
 	gpd.run_medis()

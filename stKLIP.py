@@ -55,13 +55,13 @@ def iter_mean(f_in,start,end,secondary=False):
 	if secondary==True:
 		f_in = h5py.File(savedir+f_in, 'r')
 		data = f_in['data']
-		print(np.shape(data))
+		#print(np.shape(data))
 		arr_start=1
 		shape=np.shape(data)
 	if secondary==False:
 		f_in = h5py.File(datadir+f_in, 'r')
 		data = f_in['data']
-		print(np.shape(data))
+		#print(np.shape(data))
 		arr_start=0
 		shape=np.shape(data[0,0,0,0,start:end,start:end])
 	size = shape[-1]
@@ -98,7 +98,7 @@ def iter_cov2d(f_in,lag,start,end,legacy=False,return_mean=False,verbose=True):
 	if legacy==True:
 		#open file
 		f_in = h5py.File(datadir+f_in, 'r')
-		print('file opened')
+		#print('file opened')
 		
 		#make list of keys in correct order
 		n_screens = np.arange(0,len(f_in.keys()))
@@ -234,7 +234,7 @@ def iter_stcov_matrix(filename,nlag,start,end,legacy=False):
 	shape = np.shape(data[0,0,0,0,start:end,start:end])
 	f_in.close()
 	npix = (shape[-1])**2 
-	print('file loaded')
+	#print('file loaded')
 	print(nlag,npix)
 	#if ((nlag*npix*32)**2)>5e11:
 		#print('WARNING: SIZE TOO BIG CANNOT HOLD IN MEMORY')
@@ -349,7 +349,7 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,256],iterative=True,return_
 	if iterative==False:
 		filename = f_in.split('.')[0]
 		f_in = h5py.File(datadir+f_in, 'r')
-		print('file opened')
+		print('file opened for stKLIP')
 		data = f_in['data']
 		full_seq = data[:,1,0,:,start:end,start:end]
 		full_seq=np.sum(full_seq,axis=1)
@@ -400,7 +400,7 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,256],iterative=True,return_
 		
 		filename = f_in.split('.')[0]
 		f_in = h5py.File(datadir+f_in, 'r')
-		print('file opened')
+		print('file opened for stKLIP')
 		full_seq = f_in['data']
 
 		central_index = int(np.median(np.arange(0,seq_len)))
@@ -431,12 +431,12 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,256],iterative=True,return_
 		
 		while (i+seq_len-1)<np.shape(full_seq)[0]:
 			
-			print(np.shape(full_seq))
+			#print(np.shape(full_seq))
 			target_seq = full_seq[i:i+seq_len,1,0,:,start:end,start:end]
 			target_seq = np.sum(target_seq,axis=1)
 			target_seq = np.abs(target_seq)**2
-			print(np.shape(target_seq))
-			print(np.shape(mean_img))
+			#print(np.shape(target_seq))
+			#print(np.shape(mean_img))
 
 			#choose target image - we're going with one, the "central" image (2 in a series of 5 lags)
 			ms_target_seq = target_seq - mean_img
@@ -598,7 +598,7 @@ def model_grid(filename,nlags,nmodes,window=[0,256],legacy=False):
 		hdr = fits.Header()
 		for key in modes.attrs:
 			hdr[key] = str(modes.attrs[key])
-			print(key,str(modes.attrs[key]))
+			#print(key,str(modes.attrs[key]))
 		averaged=np.asarray(averaged)
 		fits.writeto(savedir+'{}_avg-res_{}-lags.fits'.format(name,nlag),averaged,header=hdr,overwrite=True)
 		print('also saved in fits format as {}_avg-res_{}-lags.fits'.format(name,nlag))
@@ -625,7 +625,7 @@ def contrast_curve():
 
 def stringtolist(string):
 	splits = string.split(',')
-	print(splits)
+	#print(splits)
 	values=[]
 	for i in splits:
 		values.append(int(i))
@@ -638,7 +638,7 @@ if __name__ == '__main__':
 	lag_string = sys.argv[2]
 	input_lags = stringtolist(lag_string)
 	print("lags:",input_lags)
-	print(type(input_lags),type(input_lags[0]))
+	#print(type(input_lags),type(input_lags[0]))
 	mode_string = sys.argv[3]
 	input_modes = stringtolist(mode_string)
 	print("modes:",input_modes)

@@ -595,6 +595,7 @@ def model_grid(filename,nlags,nmodes,window=[0,256],legacy=False):
 		print('LAG {} FINISHED - averaged residuals all saved to file at {}_avg-res_{}-lags.h5'.format(nlag,name,nlag))
 
 		#save to fits cube for easy viewing 
+		####note! this will break fits header, attrs from h5 are too long. see stKLIP-H2 for updated version
 		hdr = fits.Header()
 		for key in modes.attrs:
 			hdr[key] = str(modes.attrs[key])

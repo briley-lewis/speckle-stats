@@ -1,3 +1,7 @@
+#####NOTE THIS SCRIPT IS OUT OF DATE. MOST RECENT CHANGES HAVE BEEN MADE TO STKLIP-H2
+
+
+
 import math
 from astropy.io import fits
 import h5py

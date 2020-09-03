@@ -33,7 +33,7 @@ def load_full(filename,legacy=False,window=[0,256]):
 		for key in keys:
 			frame = f_in[key]
 			frame = np.sum(frame,axis=2)
-			intensity = np.abs(frame[1,0,start:end,start:end])**2
+			intensity = np.abs(frame[1,0,starty:endy,startx:endx])**2
 			intensities.append(intensity)
 
 		print('data imported')
@@ -51,7 +51,7 @@ def load_full(filename,legacy=False,window=[0,256]):
 	else:
 		print('data import error')
 
-def iter_mean(f_in,start,end,secondary=False):
+def iter_mean(f_in,starty,startx,endy,endx,secondary=False):
 	"""get the mean image from an hdf5 dataset, iterative approach"""
 	#open file
 	if secondary==True:
@@ -65,7 +65,7 @@ def iter_mean(f_in,start,end,secondary=False):
 		data = f_in['data']
 		#print(np.shape(data))
 		arr_start=0
-		shape=np.shape(data[0,0,0,0,start:end,start:end])
+		shape=np.shape(data[0,0,0,0,starty:endy,startx:endx])
 	size = shape[-1]
 	
 	#iterate through to compute mean
@@ -73,7 +73,7 @@ def iter_mean(f_in,start,end,secondary=False):
 	k = 0
 	for num in np.arange(arr_start,np.shape(data)[0]): ##exclude first frame of zeros from file initialization
 		if secondary==False:
-			frame = data[num,1,0,:,start:end,start:end]
+			frame = data[num,1,0,:,starty:endy,startx:endx]
 			frame = np.sum(frame,axis=0)
 			intensity = np.abs(frame)**2
 		else:
@@ -96,7 +96,7 @@ def cov2d(intensities,lag=0):
 		cov = (cov+cov.T)/2
 	return cov
 
-def iter_cov2d(f_in,lag,start,end,legacy=False,return_mean=False,verbose=True):
+def iter_cov2d(f_in,lag,starty,startx,endy,endx,legacy=False,return_mean=False,verbose=True):
 	if legacy==True:
 		#open file
 		f_in = h5py.File(datadir+f_in, 'r')
@@ -105,7 +105,7 @@ def iter_cov2d(f_in,lag,start,end,legacy=False,return_mean=False,verbose=True):
 		#make list of keys in correct order
 		n_screens = np.arange(0,len(f_in.keys()))
 		keys = ['t' + str(n) for n in n_screens]
-		nx,ny=[end-start,end-start]
+		nx,ny=[endy-starty,endx-startx]
 
 		#iterate through to compute mean and covariance
 		n = nx*ny
@@ -120,11 +120,11 @@ def iter_cov2d(f_in,lag,start,end,legacy=False,return_mean=False,verbose=True):
 				pass
 			else:
 				framek = f_in[keys[k]]
-				ik = np.abs(framek[1,0,start:end,start:end])**2
+				ik = np.abs(framek[1,0,starty:endy,startx:endx])**2
 				ik = np.reshape(ik,n) #image at k step
 				intensities.append(ik)
 				framekm1 = f_in[keys[k-lag]]
-				ikm1 = np.abs(framekm1[1,0,start:end,start:end])**2
+				ikm1 = np.abs(framekm1[1,0,starty:endy,startx:endx])**2
 				ikm1 = np.reshape(ikm1,n)
 				k = k+1
 				######THING TO CONSIDER: what version of mean should we be using? for kth step, or k-lag step? 
@@ -151,7 +151,7 @@ def iter_cov2d(f_in,lag,start,end,legacy=False,return_mean=False,verbose=True):
 		#open file
 		f_in = h5py.File(datadir+f_in, 'r')
 		data = f_in['data']
-		shape = np.shape(data[:,0,0,0,start:end,start:end])
+		shape = np.shape(data[:,0,0,0,starty:endy,startx:endx])
 
 		#iterate through to compute mean and covariance
 		n = (shape[-1])**2
@@ -165,12 +165,12 @@ def iter_cov2d(f_in,lag,start,end,legacy=False,return_mean=False,verbose=True):
 				print('error!')
 				pass
 			else:
-				framek_orig = data[k,1,0,:,start:end,start:end]
+				framek_orig = data[k,1,0,:,starty:endy,startx:endx]
 				#print(np.shape(framek_orig))
 				framek = np.sum(framek_orig,axis=0)
 				ik = np.abs(framek)**2
 				ik = np.reshape(ik,n) #image at k step
-				framekm1 = data[k-lag,1,0,:,start:end,start:end]
+				framekm1 = data[k-lag,1,0,:,starty:endy,startx:endx]
 				framekm1 = np.sum(framekm1,axis=0)
 				ikm1 = np.abs(framekm1)**2
 				ikm1 = np.reshape(ikm1,n)
@@ -229,25 +229,25 @@ def stcov_matrix(img,nlag):
 
 	return cov
 
-def iter_stcov_matrix(filename,nlag,start,end,legacy=False):
+def iter_stcov_matrix(filename,nlag,starty,startx,endy,endx,legacy=False):
 	"""creates larger block diagonal covariance matrix out of smaller single lag covariance matrices"""
 	f_in = h5py.File(datadir+filename, 'r')
 	data = f_in['data']
-	shape = np.shape(data[0,0,0,0,start:end,start:end])
+	shape = np.shape(data[0,0,0,0,starty:endy,startx:endx])
 	f_in.close()
 	npix = (shape[-1])**2 
 	#print('file loaded')
 	#print(nlag,npix)
 	#if ((nlag*npix*32)**2)>5e11:
 		#print('WARNING: SIZE TOO BIG CANNOT HOLD IN MEMORY')
-	cov = np.full((nlag*npix,nlag*npix),np.nan) ###consider writing to hdf5 file, would enable larger windows and larger nlag. not needed though since eigendecom is bigger bottleneck
+	cov = np.full((nlag*npix,nlag*npix),np.nan) ###consider writing to hdf5 file, would enable larger windows and larger nlag
 	print('cov matrix shell made')
 	i = 0
 	j = 1
 	#start with diagonals
 	while j<nlag+1:
 		print('covering indices',i*npix,'to',j*npix)
-		cov[i*npix:j*npix,i*npix:j*npix] = iter_cov2d(filename,0,start,end,legacy=legacy,return_mean=False,verbose=False)
+		cov[i*npix:j*npix,i*npix:j*npix] = iter_cov2d(filename,0,starty,startx,endy,endx,legacy=legacy,return_mean=False,verbose=False)
 		i = i+1
 		j = j+1
 	#then, off diagonals!
@@ -258,7 +258,7 @@ def iter_stcov_matrix(filename,nlag,start,end,legacy=False):
 		while ((j+k)*npix)<(npix*nlag):
 			print('covering indices',(j-1)*npix,'to',(j+k)*npix,'and',(j+k)*npix,'to',(j+k+1)*npix)
 			#print(np.shape(cov[(j-1)*npix:j*npix,(j+k)*npix:(j+k+1)*npix]))
-			cov_now = iter_cov2d(filename,(k+1),start,end,legacy=legacy,return_mean=False,verbose=False)
+			cov_now = iter_cov2d(filename,(k+1),starty,startx,endy,endx,legacy=legacy,return_mean=False,verbose=False)
 			cov[(j-1)*npix:j*npix,(j+k)*npix:(j+k+1)*npix] = cov_now
 			cov[(j+k)*npix:(j+k+1)*npix,(j-1)*npix:j*npix] = cov_now
 			j = j+1
@@ -353,7 +353,7 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,256],iterative=True,return_
 		f_in = h5py.File(datadir+f_in, 'r')
 		print('file opened for stKLIP')
 		data = f_in['data']
-		full_seq = data[:,1,0,:,start:end,start:end]
+		full_seq = data[:,1,0,:,starty:endy,startx:endx]
 		full_seq=np.sum(full_seq,axis=1)
 		full_seq = np.abs(full_seq)**2
 		mean_img = np.mean(full_seq,axis=0) ###won't work for iterative
@@ -409,7 +409,7 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,256],iterative=True,return_
 		#print('for subsequence length',seq_len,'central image has index',central_index)
 		
 		##initialize save files
-		test_seq = full_seq[0,1,0,0,start:end,start:end]
+		test_seq = full_seq[0,1,0,0,starty:endy,startx:endx]
 		models = h5py.File(savedir+'{}_models-ev{}-seq{}.h5'.format(filename,num_ev,seq_len), 'w')
 		subtracteds = h5py.File(savedir+'{}_subtracteds-ev{}-seq{}.h5'.format(filename,num_ev,seq_len), 'w')
 		models.create_dataset('data', data=np.zeros((0,np.shape(test_seq)[0],np.shape(test_seq)[1])), compression="gzip", chunks=True,maxshape=(None, None, None))
@@ -434,7 +434,7 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,256],iterative=True,return_
 		while (i+seq_len-1)<np.shape(full_seq)[0]:
 			
 			#print(np.shape(full_seq))
-			target_seq = full_seq[i:i+seq_len,1,0,:,start:end,start:end]
+			target_seq = full_seq[i:i+seq_len,1,0,:,starty:endy,startx:endx]
 			target_seq = np.sum(target_seq,axis=1)
 			target_seq = np.abs(target_seq)**2
 			#print(np.shape(target_seq))
@@ -475,7 +475,7 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,256],iterative=True,return_
 
 		print('stklip done, beginning averaging process')
 		##compute iterative mean on subtracteds
-		averaged = iter_mean('{}_subtracteds-ev{}-seq{}.h5'.format(filename,num_ev,seq_len),start,end,secondary=True) ##start and end should be global variables when running this~ not the best implementation?
+		averaged = iter_mean('{}_subtracteds-ev{}-seq{}.h5'.format(filename,num_ev,seq_len),starty,startx,endy,endx,secondary=True) ##start and end should be global variables when running this~ not the best implementation?
 		print('average residuals calculated -- not yet saved on disk')
 
 		return averaged
@@ -493,13 +493,13 @@ def run_stKLIP(filename,nlag,nmode,window=[0,256],legacy=False):
 	end = window[1]
 
 	print('creating stcov matrix for {} lags'.format(nlag))
-	stcov_matrix = iter_stcov_matrix(filename,nlag,start,end)
+	stcov_matrix = iter_stcov_matrix(filename,nlag,starty,startx,endy,endx)
 
 	print('doing eigendecomposition')
 	ev0, P0 = eigendecomp(stcov_matrix,max_ev=(nmode+1))
 
 	print('computing overall image mean')
-	mean = iter_mean(filename,start,end)
+	mean = iter_mean(filename,starty,startx,endy,endx)
 
 	print('data residuals will be saved to {}_avg-res_{}-lags_{}-modes.fits'.format(name,nlag,nmode))
 	print('running stKLIP for {} modes'.format(nmode))
@@ -545,13 +545,13 @@ def model_grid(filename,nlags,nmodes,window=[0,256],legacy=False):
 	#running over multiple lags, multiple modes
 	for nlag in nlags:
 		print('creating stcov matrix for {} lags'.format(nlag))
-		stcov_matrix = iter_stcov_matrix(filename,nlag,start,end)
+		stcov_matrix = iter_stcov_matrix(filename,nlag,starty,startx,endy,endx)
 
 		print('doing eigendecomposition')
 		ev0, P0 = eigendecomp(stcov_matrix,max_ev=(nmodes[-1]+5)) ##weird nmodes thing here ensures that there are more ev calculated than modes we want to use
 
 		print('computing overall image mean')
-		mean = iter_mean(filename,start,end,secondary=False)
+		mean = iter_mean(filename,starty,startx,endy,endx,secondary=False)
 		shape = np.shape(mean)
 
 
@@ -584,7 +584,7 @@ def model_grid(filename,nlags,nmodes,window=[0,256],legacy=False):
 				pass
 			else:
 				print('running stKLIP for {} modes'.format(mode))
-				avg_res = stKLIP(ev0,P0,filename,num_ev=mode,seq_len=nlag,mean_img=mean,window=[start,end])
+				avg_res = stKLIP(ev0,P0,filename,num_ev=mode,seq_len=nlag,mean_img=mean,window=[starty,startx,endy,endx])
 				print('stKLIP completed for {} modes'.format(mode))
 
 				###add slice to file; somehow include KL mode in header?
@@ -642,6 +642,7 @@ def stringtolist(string):
 	return values
 
 if __name__ == '__main__':
+	print('starting now!')
 	input_file = sys.argv[1]
 	print('running stKLIP for',datadir+input_file)
 	print('outputs will write to',savedir)
@@ -654,7 +655,8 @@ if __name__ == '__main__':
 	print("modes:",input_modes)
 	window_string = sys.argv[4]
 	input_window = stringtolist(window_string)
-	print("window:",input_window)
+	print("windows (y,y,x,x):",input_window)
+	print('moving on to model grid function')
 	model_grid(input_file,input_lags,input_modes,window=input_window)
 
 

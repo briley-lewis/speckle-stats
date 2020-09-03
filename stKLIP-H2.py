@@ -51,7 +51,7 @@ def load_full(filename,legacy=False,window=[0,256]):
 	else:
 		print('data import error')
 
-def iter_mean(f_in,starty,startx,endy,endx,secondary=False):
+def iter_mean(f_in,starty,endy,startx,endx,secondary=False):
 	"""get the mean image from an hdf5 dataset, iterative approach"""
 	#open file
 	if secondary==True:
@@ -96,7 +96,7 @@ def cov2d(intensities,lag=0):
 		cov = (cov+cov.T)/2
 	return cov
 
-def iter_cov2d(f_in,lag,starty,startx,endy,endx,legacy=False,return_mean=False,verbose=True):
+def iter_cov2d(f_in,lag,starty,endy,startx,endx,legacy=False,return_mean=False,verbose=True):
 	if legacy==True:
 		#open file
 		f_in = h5py.File(datadir+f_in, 'r')
@@ -229,7 +229,7 @@ def stcov_matrix(img,nlag):
 
 	return cov
 
-def iter_stcov_matrix(filename,nlag,starty,startx,endy,endx,legacy=False):
+def iter_stcov_matrix(filename,nlag,starty,endy,startx,endx,legacy=False):
 	"""creates larger block diagonal covariance matrix out of smaller single lag covariance matrices"""
 	f_in = h5py.File(datadir+filename, 'r')
 	data = f_in['data']
@@ -247,7 +247,7 @@ def iter_stcov_matrix(filename,nlag,starty,startx,endy,endx,legacy=False):
 	#start with diagonals
 	while j<nlag+1:
 		print('covering indices',i*npix,'to',j*npix)
-		cov[i*npix:j*npix,i*npix:j*npix] = iter_cov2d(filename,0,starty,startx,endy,endx,legacy=legacy,return_mean=False,verbose=False)
+		cov[i*npix:j*npix,i*npix:j*npix] = iter_cov2d(filename,0,starty,endy,startx,endx,legacy=legacy,return_mean=False,verbose=False)
 		i = i+1
 		j = j+1
 	#then, off diagonals!
@@ -258,12 +258,52 @@ def iter_stcov_matrix(filename,nlag,starty,startx,endy,endx,legacy=False):
 		while ((j+k)*npix)<(npix*nlag):
 			print('covering indices',(j-1)*npix,'to',(j+k)*npix,'and',(j+k)*npix,'to',(j+k+1)*npix)
 			#print(np.shape(cov[(j-1)*npix:j*npix,(j+k)*npix:(j+k+1)*npix]))
-			cov_now = iter_cov2d(filename,(k+1),starty,startx,endy,endx,legacy=legacy,return_mean=False,verbose=False)
+			cov_now = iter_cov2d(filename,(k+1),starty,endy,startx,endx,legacy=legacy,return_mean=False,verbose=False)
 			cov[(j-1)*npix:j*npix,(j+k)*npix:(j+k+1)*npix] = cov_now
 			cov[(j+k)*npix:(j+k+1)*npix,(j-1)*npix:j*npix] = cov_now
 			j = j+1
 
 	return cov
+
+def iter_stcov_matrix2(filename,nlag,starty,endy,startx,endx,legacy=False):
+    """creates larger block diagonal covariance matrix out of smaller single lag covariance matrices. this one saves it to an h5 file so that it doesn't overwhelm memory, but takes longer!
+    note: will still cause memory errors unless eigendecomp is changed, since you've gotta load in the whole matrix for that. also, this still isn't fully functional so DONT USE IT OK.
+    as of 9/3/2020 this for some reason fails np.allclose with the output of iter_stcov_matrix function."""
+    f_in = h5py.File(datadir+filename, 'r')
+    splits = filename.split('.')
+    name = splits[0]
+    data = f_in['data']
+    shape = np.shape(data[0,0,0,0,starty:endy,startx:endx])
+    f_in.close()
+    npix = (shape[-1])**2
+    hf = h5py.File('{}_cov-matrix_{}-lags.h5'.format(name,nlag),'w')
+    hf.create_dataset('cov',(nlag*npix,nlag*npix))
+    hf.close()
+    hf = h5py.File('{}_cov-matrix_{}-lags.h5'.format(name,nlag), 'a')
+    print('saving cov matrix at {}_cov-matrix_{}-lags.h5'.format(name,nlag))
+    i = 0
+    j = 1
+    #start with diagonals
+    while j<nlag+1:
+        print('covering indices',i*npix,'to',j*npix)
+        hf['cov'][i*npix:j*npix,i*npix:j*npix] = iter_cov2d(filename,0,starty,endy,startx,endx,legacy=legacy,return_mean=False,verbose=False)
+        i = i+1
+        j = j+1
+    #then, off diagonals!
+    total = npix*nlag
+    for k in range(0,nlag):
+        j=1
+        print('k',k,'completed')
+        while ((j+k)*npix)<(npix*nlag):
+            print('covering indices',(j-1)*npix,'to',(j+k)*npix,'and',(j+k)*npix,'to',(j+k+1)*npix)
+            #print(np.shape(cov[(j-1)*npix:j*npix,(j+k)*npix:(j+k+1)*npix]))
+            cov_now = iter_cov2d(filename,(k+1),starty,endy,startx,endx,legacy=legacy,return_mean=False,verbose=False)
+            hf['cov'][(j-1)*npix:j*npix,(j+k)*npix:(j+k+1)*npix] = cov_now
+            hf['cov'][(j+k)*npix:(j+k+1)*npix,(j-1)*npix:j*npix] = cov_now
+            j = j+1
+
+    return np.asarray(hf['cov']) ###THIS WILL CAUSE MEMORY ERRORS. REMOVE IF IMPLEMENTING ITERATIVE EIGNENDECOMP
+    hf.close()
 
 def iterative_eigendecomp(filename,legacy=False):
 	"""considered implemented an iterative algorithm for eigendecomposition / PCA since that is also computationally heavy; considered NIPALS, but did not implement due to need for manually created stcov matrix"""
@@ -475,7 +515,7 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,256],iterative=True,return_
 
 		print('stklip done, beginning averaging process')
 		##compute iterative mean on subtracteds
-		averaged = iter_mean('{}_subtracteds-ev{}-seq{}.h5'.format(filename,num_ev,seq_len),starty,startx,endy,endx,secondary=True) ##start and end should be global variables when running this~ not the best implementation?
+		averaged = iter_mean('{}_subtracteds-ev{}-seq{}.h5'.format(filename,num_ev,seq_len),starty,endy,startx,endx,secondary=True) ##start and end should be global variables when running this~ not the best implementation?
 		print('average residuals calculated -- not yet saved on disk')
 
 		return averaged
@@ -493,13 +533,13 @@ def run_stKLIP(filename,nlag,nmode,window=[0,256],legacy=False):
 	end = window[1]
 
 	print('creating stcov matrix for {} lags'.format(nlag))
-	stcov_matrix = iter_stcov_matrix(filename,nlag,starty,startx,endy,endx)
+	stcov_matrix = iter_stcov_matrix(filename,nlag,starty,endy,startx,endx)
 
 	print('doing eigendecomposition')
 	ev0, P0 = eigendecomp(stcov_matrix,max_ev=(nmode+1))
 
 	print('computing overall image mean')
-	mean = iter_mean(filename,starty,startx,endy,endx)
+	mean = iter_mean(filename,starty,endy,startx,endx)
 
 	print('data residuals will be saved to {}_avg-res_{}-lags_{}-modes.fits'.format(name,nlag,nmode))
 	print('running stKLIP for {} modes'.format(nmode))
@@ -545,13 +585,13 @@ def model_grid(filename,nlags,nmodes,window=[0,256],legacy=False):
 	#running over multiple lags, multiple modes
 	for nlag in nlags:
 		print('creating stcov matrix for {} lags'.format(nlag))
-		stcov_matrix = iter_stcov_matrix(filename,nlag,starty,startx,endy,endx)
+		stcov_matrix = iter_stcov_matrix(filename,nlag,starty,endy,startx,endx)
 
 		print('doing eigendecomposition')
 		ev0, P0 = eigendecomp(stcov_matrix,max_ev=(nmodes[-1]+5)) ##weird nmodes thing here ensures that there are more ev calculated than modes we want to use
 
 		print('computing overall image mean')
-		mean = iter_mean(filename,starty,startx,endy,endx,secondary=False)
+		mean = iter_mean(filename,starty,endy,startx,endx,secondary=False)
 		shape = np.shape(mean)
 
 
@@ -584,7 +624,7 @@ def model_grid(filename,nlags,nmodes,window=[0,256],legacy=False):
 				pass
 			else:
 				print('running stKLIP for {} modes'.format(mode))
-				avg_res = stKLIP(ev0,P0,filename,num_ev=mode,seq_len=nlag,mean_img=mean,window=[starty,startx,endy,endx])
+				avg_res = stKLIP(ev0,P0,filename,num_ev=mode,seq_len=nlag,mean_img=mean,window=[starty,endy,startx,endx])
 				print('stKLIP completed for {} modes'.format(mode))
 
 				###add slice to file; somehow include KL mode in header?

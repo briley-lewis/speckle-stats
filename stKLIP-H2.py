@@ -575,12 +575,14 @@ def run_stKLIP(filename,nlag,nmode,window=[0,256],legacy=False):
 	modes.close()
 
 
-def model_grid(filename,nlags,nmodes,window=[0,256],legacy=False):
+def model_grid(filename,nlags,nmodes,window=[0,256,0,256],legacy=False):
 	"""future function / wrapper for testing over multiple lags + modes. nlags is an array of lags to test, nmodes is a number of modes to test at each lag"""
 	name = filename.split('.')[0]
 	f_in = h5py.File(datadir+filename,'r')
-	start = window[0]
-	end = window[1]
+	starty = window[0]
+	endy = window[1]
+	startx = window[2]
+	endx = window[3]
 
 	#running over multiple lags, multiple modes
 	for nlag in nlags:

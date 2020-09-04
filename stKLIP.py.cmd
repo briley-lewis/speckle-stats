@@ -14,7 +14,7 @@
 #  program output  = Specified by user program
 #  Resources requested
 #
-#$ -l h_data=16000M,h_rt=168:00:00,exclusive,highp
+#$ -l h_data=32000M,h_rt=168:00:00,exclusive,highp
 # #
 #  Name of application for log
 #$ -v QQAPP=job

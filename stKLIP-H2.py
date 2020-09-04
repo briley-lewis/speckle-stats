@@ -381,11 +381,14 @@ def nipals(n_real,n_var):
 
 	return ev, P""",
 
-def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,256],iterative=True,return_all=False,**kwargs):
+def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,256,0,256],iterative=True,return_all=False,**kwargs):
 	"""given a set of eigenvalues and eigenvectors, this runs the rest of KLIP over the *whole* image sequence (not just one image subsequence.
 	returns the averaged residuals, and also the whole set of subtracted images and model images. IF USING ITERATIVE, PLEASE SUPPLY MEAN FROM ITERATIVE COV CALC AS KWARG 'mean_img'"""
-	start = window[0]
-	end = window[1]
+	starty = window[0]
+	endy = window[1]
+	startx = window[2]
+	endx = window[3]
+
 	mean_img = kwargs['mean_img']
 
 	if iterative==False:

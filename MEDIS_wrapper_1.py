@@ -29,7 +29,7 @@ tp.use_ao = False #AO off/on
 #tp.servo_error = [0.005,1] ##only relevant if trying AO!
 tp.piston_error = False #piston error off/on
 tp.use_coron = True #coronagraph off/on
-tp.occulter_type = 'None (Lyot Stop)' #occulter type - vortex, none, gaussian, 8th_Order, None (Lyot Stop)
+tp.occulter_type = 'Vortex' #occulter type - vortex, none, gaussian, 8th_Order, None (Lyot Stop)
 tp.detector = 'ideal'
 tp.beam_ratio = 25/64./2
 tp.check_args()
@@ -52,7 +52,7 @@ cp.h = 100
 
 iop.update("complex-fields/")
 ###SET FILE SAVE NAME
-iop.fields = os.path.join(iop.testdir, 'MEDIS_1sec-nc_Aug2020.h5')
+iop.fields = os.path.join(iop.testdir, 'MEDIS_1sec_Aug2020.h5')
 
 if __name__ == '__main__':
 	gpd.run_medis()

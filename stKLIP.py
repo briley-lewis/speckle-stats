@@ -269,12 +269,14 @@ def iter_stcov_matrix2(filename,nlag,starty,endy,startx,endx,legacy=False):
     """creates larger block diagonal covariance matrix out of smaller single lag covariance matrices. this one saves it to an h5 file so that it doesn't overwhelm memory, but takes longer!
     note: will still cause memory errors unless eigendecomp is changed, since you've gotta load in the whole matrix for that. also, this still isn't fully functional so DONT USE IT OK.
     as of 9/3/2020 this for some reason fails np.allclose with the output of iter_stcov_matrix function."""
+    print('starting stcov matrix!')
     f_in = h5py.File(datadir+filename, 'r')
     splits = filename.split('.')
     name = splits[0]
     data = f_in['data']
     shape = np.shape(data[0,0,0,0,starty:endy,startx:endx])
     f_in.close()
+    print('file loaded')
     npix = (shape[-1])**2
     hf = h5py.File('{}_cov-matrix_{}-lags.h5'.format(name,nlag),'w')
     hf.create_dataset('cov',(nlag*npix,nlag*npix))

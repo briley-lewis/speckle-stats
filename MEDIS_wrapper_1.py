@@ -18,7 +18,7 @@ ap.companion=True #is there a planet in there?
 ap.sample_time = 0.005 #exposure time in [s]
 ap.numframes = 200
 ap.grid_size = 128*2
-ap.contrast = [5e-3]
+ap.contrast = [5e-2]
 ap.star_spec = None
 #ap.nwsamp = 1 #number of wavefronts in proper to sample from
 
@@ -45,7 +45,7 @@ sp.show_cube = False
 #atmos params -- all currently set to defaults
 cp.model = 'single'  # single|hcipy_standard|evolving
 cp.show_caosparams= True  # for control over all other variables
-cp.cn = 1e-14 #lower cn2 should mean less turbulence - this value is equivalent to r0~30 (>>D)
+cp.cn = 1e-13 #lower cn2 should mean less turbulence - this value is equivalent to r0~30 (>>D)
 cp.L0 = 10 #longer L0 (coherence length) means less turbulent, I think
 cp.v = np.asarray([5,0])
 cp.h = 100

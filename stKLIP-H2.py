@@ -302,7 +302,8 @@ def iter_stcov_matrix2(filename,nlag,starty,endy,startx,endx,legacy=False):
             hf['cov'][(j+k)*npix:(j+k+1)*npix,(j-1)*npix:j*npix] = cov_now
             j = j+1
 
-    return np.asarray(hf['cov']) ###THIS WILL CAUSE MEMORY ERRORS. REMOVE IF IMPLEMENTING ITERATIVE EIGNENDECOMP
+    #return np.asarray(hf['cov']) ###THIS WILL CAUSE MEMORY ERRORS. REMOVE IF IMPLEMENTING ITERATIVE EIGNENDECOMP
+    print('matrix created at {}_cov-matrix_{}-lags.h5, closing file'.format(name,nlag))
     hf.close()
 
 def iterative_eigendecomp(filename,legacy=False):

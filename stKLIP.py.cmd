@@ -8,13 +8,13 @@
 #  error           = Merged with joblog
 #$ -j y
 #  The following items pertain to the user program
-#  user program    = /u/home/b/blewis34/speckle-stats/stKLIP-H2.py
+#  user program    = /u/home/b/blewis34/speckle-stats/stKLIP.py
 #  arguments       = 
 #  program input   = Specified by user program
 #  program output  = Specified by user program
 #  Resources requested
 #
-#$ -l h_data=32000M,h_rt=168:00:00,exclusive,highp
+#$ -l h_data=190000M,h_rt=168:00:00,exclusive,highp
 # #
 #  Name of application for log
 #$ -v QQAPP=job
@@ -31,13 +31,13 @@
   set qqversion = 
   set qqapp     = "job serial"
   set qqidir    = /u/home/b/blewis34/speckle-stats
-  set qqjob     = stKLIP-H2.py
+  set qqjob     = stKLIP.py
   set qqodir    = /u/home/b/blewis34/speckle-stats
   cd     /u/home/b/blewis34/speckle-stats
   source /u/local/bin/qq.sge/qr.runtime
   if ($status != 0) exit (1)
 #
-  echo "UGE job for stKLIP-H2.py"
+  echo "UGE job for stKLIP.py"
   echo ""
   echo "  script directory:"
   echo "    "/u/home/b/blewis34/speckle-stats
@@ -58,11 +58,11 @@
   module load python/3.7.2
   source /u/home/b/blewis34/.bash_profile
 #
-  echo stKLIP-H2.py "" \>\& stKLIP.output.$JOB_ID
+  echo stKLIP.py "" \>\& stKLIP.output.$JOB_ID
   echo ""
 
 #PUT SIM PARAMS HERE
-  /usr/bin/time python3 /u/home/b/blewis34/speckle-stats/stKLIP-H2.py MEDIS_30sec_Aug2020.h5 2,3,4,5,7,10,15,20,25,30,40,50,100 1,2,3,4,5,7,10,15,20,25,30,40,50,60,70,80,90,100,150,200,250,300,400,500 85,135,125,175 >& /u/home/b/blewis34/job-outputs/stKLIP.output.$JOB_ID
+  /usr/bin/time python3 /u/home/b/blewis34/speckle-stats/stKLIP.py MEDIS_30sec_Aug2020.h5 2,3,4,5,6 1,3,5,7,10,15,20,30,50,75,100,150,200,300,500 75,175,100,200 >& /u/home/b/blewis34/job-outputs/stKLIP.output.$JOB_ID
 #
   echo ""
   echo "script finished at:  "` date `

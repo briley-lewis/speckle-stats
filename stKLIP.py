@@ -195,54 +195,56 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,256,0,256],iterative=True,r
 	endx = window[3]
 
 	if iterative==False:
-		filename = f_in.split('.')[0]
-		f_in = h5py.File(datadir+f_in, 'r')
-		print('file opened for stKLIP')
-		data = f_in['data']
-		full_seq = data[:,1,0,:,starty:endy,startx:endx]
-		full_seq = np.abs(full_seq)**2
-		full_seq = np.sum(full_seq,axis=1)
-		mean_img = np.mean(full_seq,axis=0) ###won't work for iterative
-		central_index = int(np.median(np.arange(0,seq_len)))
+		"""THIS CODE HAS NOT BEEN UPDATED RECENTLY AND LIKELY HAS ERRORS. USE ITERATIVE VERSION"""
+		#filename = f_in.split('.')[0]
+		#f_in = h5py.File(datadir+f_in, 'r')
+		#print('file opened for stKLIP')
+		#data = f_in['data']
+		#full_seq = data[:,1,0,:,starty:endy,startx:endx]
+		#full_seq = np.abs(full_seq)**2
+		#full_seq = np.sum(full_seq,axis=1)
+		#mean_img = np.mean(full_seq,axis=0) ###won't work for iterative
+		#central_index = int(np.median(np.arange(0,seq_len)))
 		#print('for subsequence length',seq_len,'central image has index',central_index)
 		
-		models=[]
-		subtracteds=[]
-		i=0
+		#models=[]
+		#subtracteds=[]
+		#i=0
 		
-		while (i+seq_len-1)<np.shape(full_seq)[0]:
+		#while (i+seq_len-1)<np.shape(full_seq)[0]:
 			
-			target_seq = full_seq[i:i+seq_len,:,:]
+			#target_seq = full_seq[i:i+seq_len,:,:]
 
 			#choose target image - we're going with one, the "central" image (2 in a series of 5 lags)
-			ms_target_seq = target_seq - mean_img
-			seq_len,img_shape,img_shape2 = np.shape(target_seq)
+			#ms_target_seq = target_seq - mean_img
+			#seq_len,img_shape,img_shape2 = np.shape(target_seq)
 
 			#choose modes
-			chosen_ev = np.reshape(P0[0:num_ev],[num_ev,seq_len*img_shape*img_shape]) 
-			chosen_evals = ev0[0:num_ev]
+			#chosen_ev = np.reshape(P0[0:num_ev],[num_ev,seq_len*img_shape*img_shape]) 
+			#chosen_evals = ev0[0:num_ev]
 
 			#get image coefficients
-			coeffs = np.dot(chosen_ev,np.reshape(target_seq,seq_len*img_shape**2)) 
+			#coeffs = np.dot(chosen_ev,np.reshape(target_seq,seq_len*img_shape**2)) 
 
 			#create model
-			psf_model = np.reshape(np.dot(coeffs,chosen_ev),[seq_len,img_shape,img_shape]) 
-			central_img = target_seq[central_index]
-			central_model = psf_model[central_index]
-			models.append(central_model)
-			subtracted = (central_img-central_model)
-			subtracteds.append(subtracted)
+			#psf_model = np.reshape(np.dot(coeffs,chosen_ev),[seq_len,img_shape,img_shape]) 
+			#central_img = target_seq[central_index]
+			#central_model = psf_model[central_index]
+			#models.append(central_model)
+			#subtracted = (central_img-central_model)
+			#subtracteds.append(subtracted)
 			#print('central image',(i+central_index),'done')
 			
-			i=i+1
+			#i=i+1
 			
-		averaged = np.average(subtracteds,axis=0)
+		#averaged = np.average(subtracteds,axis=0)
 
-		print('nothing saved on disk!')
-		if return_all==True:
-			return averaged, subtracteds, models
-		else:
-			return averaged
+		#print('nothing saved on disk!')
+		#if return_all==True:
+			#return averaged, subtracteds, models
+		#else:
+			#return averaged
+		print('nothing done, use iterative method instead')
 
 	if iterative==True:
 		
@@ -251,7 +253,7 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,256,0,256],iterative=True,r
 		print('file opened for stKLIP')
 		full_seq = f_in['data']
 		mean_img = kwargs['mean_img']
-
+		
 		central_index = int(np.median(np.arange(0,seq_len)))
 		#print('for subsequence length',seq_len,'central image has index',central_index)
 		

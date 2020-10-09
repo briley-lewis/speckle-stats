@@ -40,7 +40,7 @@ def iter_mean(f_in,starty,endy,startx,endx,secondary=False):
 	if secondary==True:
 		f_in = h5py.File(savedir+f_in, 'r')
 		data = f_in['data']
-		arr_start=1
+		arr_start=0
 		shape=np.shape(data)
 	if secondary==False:
 		f_in = h5py.File(datadir+f_in, 'r')
@@ -138,28 +138,31 @@ def iter_stcov_matrix(filename,nlag,starty,endy,startx,endx):
 	shape = np.shape(data[0,0,0,0,starty:endy,startx:endx])
 	f_in.close()
 	npix = (shape[-1])**2 
-	cov = np.full((nlag*npix,nlag*npix),np.nan) ###consider writing to hdf5 file, would enable larger windows and larger nlag. only worthwhile if using dask for eigh though
-	print('cov matrix shell made')
-	i = 0
-	j = 1
-	#start with diagonals
-	while j<nlag+1:
-		print('covering indices',i*npix,'to',j*npix)
-		cov[i*npix:j*npix,i*npix:j*npix] = iter_cov2d(filename,0,starty,endy,startx,endx,return_mean=False,verbose=False)
-		i = i+1
-		j = j+1
-	#then, off diagonals!
-	total = npix*nlag
-	for k in range(0,nlag):
-		j=1
-		print('k',k,'completed')
-		while ((j+k)*npix)<(npix*nlag):
-			print('covering indices',(j-1)*npix,'to',(j+k)*npix,'and',(j+k)*npix,'to',(j+k+1)*npix)
-			#print(np.shape(cov[(j-1)*npix:j*npix,(j+k)*npix:(j+k+1)*npix]))
-			cov_now = iter_cov2d(filename,(k+1),starty,endy,startx,endx,return_mean=False,verbose=False)
-			cov[(j-1)*npix:j*npix,(j+k)*npix:(j+k+1)*npix] = cov_now
-			cov[(j+k)*npix:(j+k+1)*npix,(j-1)*npix:j*npix] = cov_now
+	if nlag=0:
+		cov = iter_cov2d(filename,0,starty,endy,startx,endx,return_mean=False,verbose=False)
+	else:
+		cov = np.full((nlag*npix,nlag*npix),np.nan) ###consider writing to hdf5 file, would enable larger windows and larger nlag. only worthwhile if using dask for eigh though
+		print('cov matrix shell made')
+		i = 0
+		j = 1
+		#start with diagonals
+		while j<nlag+1:
+			print('covering indices',i*npix,'to',j*npix)
+			cov[i*npix:j*npix,i*npix:j*npix] = iter_cov2d(filename,0,starty,endy,startx,endx,return_mean=False,verbose=False)
+			i = i+1
 			j = j+1
+		#then, off diagonals!
+		total = npix*nlag
+		for k in range(0,nlag):
+			j=1
+			print('k',k,'completed')
+			while ((j+k)*npix)<(npix*nlag):
+				print('covering indices',(j-1)*npix,'to',(j+k)*npix,'and',(j+k)*npix,'to',(j+k+1)*npix)
+				#print(np.shape(cov[(j-1)*npix:j*npix,(j+k)*npix:(j+k+1)*npix]))
+				cov_now = iter_cov2d(filename,(k+1),starty,endy,startx,endx,return_mean=False,verbose=False)
+				cov[(j-1)*npix:j*npix,(j+k)*npix:(j+k+1)*npix] = cov_now
+				cov[(j+k)*npix:(j+k+1)*npix,(j-1)*npix:j*npix] = cov_now
+				j = j+1
 
 	return cov
 
@@ -301,12 +304,13 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,256,0,256],iterative=True,r
 			central_model = psf_model[central_index]
 
 			####okay, this will get out of hand in memory VERY fast! need to write out iteratively to hdf5
-			index = models["data"].shape[0]-1
+			index = models["data"].shape[0]
 			models["data"].resize((models["data"].shape[0] + 1), axis = 0)
 			models["data"][index,:,:] = central_model
 			subtracted = (central_img-central_model)
 			subtracteds["data"].resize((subtracteds["data"].shape[0] + 1), axis = 0)
 			subtracteds["data"][index,:,:] = subtracted
+			print(np.shape(subtracteds["data"]))
 			#print('central image',(i+central_index),'done')
 			
 			i=i+1

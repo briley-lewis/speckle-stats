@@ -138,7 +138,7 @@ def iter_stcov_matrix(filename,nlag,starty,endy,startx,endx):
 	shape = np.shape(data[0,0,0,0,starty:endy,startx:endx])
 	f_in.close()
 	npix = (shape[-1])**2 
-	if nlag=0:
+	if nlag==0:
 		cov = iter_cov2d(filename,0,starty,endy,startx,endx,return_mean=False,verbose=False)
 	else:
 		cov = np.full((nlag*npix,nlag*npix),np.nan) ###consider writing to hdf5 file, would enable larger windows and larger nlag. only worthwhile if using dask for eigh though

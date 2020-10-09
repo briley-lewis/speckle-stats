@@ -388,7 +388,7 @@ def model_grid(filename,nlags,nmodes,window=[0,256,0,256],legacy=False):
 				print('stKLIP completed for {} modes'.format(mode))
 
 				###add slice to file; somehow include KL mode in header?
-				index = modes["data"].shape[0]-1
+				index = modes["data"].shape[0]
 				modes["data"].resize((modes["data"].shape[0] + 1), axis = 0)
 				modes["data"][index,:,:] = avg_res
 				print('slice for {} modes saved to disk'.format(mode))

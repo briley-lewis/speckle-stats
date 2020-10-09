@@ -10,10 +10,10 @@ from photutils import aperture_photometry
 sys.path.insert(0,'/u/scratch/b/blewis34/medis_data/observations/complex-fields/')
 sys.path.insert(0,'/u/home/b/blewis34/speckle-stats/')
 
-#savedir='/u/scratch/b/blewis34/stKLIP/'
-#datadir='/u/scratch/b/blewis34/medis_data/observations/complex-fields/'
-datadir='../Outputs/'
-savedir='../Outputs/'
+savedir='/u/scratch/b/blewis34/stKLIP/'
+datadir='/u/scratch/b/blewis34/medis_data/observations/complex-fields/'
+#datadir='../Outputs/'
+#savedir='../Outputs/'
 
 ##### basic functions
 
@@ -253,7 +253,7 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,256,0,256],iterative=True,r
 		print('file opened for stKLIP')
 		full_seq = f_in['data']
 		mean_img = kwargs['mean_img']
-		
+
 		central_index = int(np.median(np.arange(0,seq_len)))
 		#print('for subsequence length',seq_len,'central image has index',central_index)
 		

@@ -10,10 +10,10 @@ from photutils import aperture_photometry
 sys.path.insert(0,'/u/scratch/b/blewis34/medis_data/observations/complex-fields/')
 sys.path.insert(0,'/u/home/b/blewis34/speckle-stats/')
 
-savedir='/u/scratch/b/blewis34/stKLIP/'
-datadir='/u/scratch/b/blewis34/medis_data/observations/complex-fields/'
-#datadir='../Outputs/'
-#savedir='../Outputs/'
+#savedir='/u/scratch/b/blewis34/stKLIP/'
+#datadir='/u/scratch/b/blewis34/medis_data/observations/complex-fields/'
+datadir='../Outputs/'
+savedir='../Outputs/'
 
 ##### basic functions
 
@@ -186,6 +186,87 @@ def eigendecomp(cov,max_ev):
 
 	return ev0,P0
 
+def KLIP(ev0,P0,f_in,num_ev=10,window=[0,256,0,256],**kwargs):
+	starty = window[0]
+	endy = window[1]
+	startx = window[2]
+	endx = window[3]
+
+	filename = f_in.split('.')[0]
+	f_in = h5py.File(datadir+f_in, 'r')
+	print('file opened for KLIP')
+	full_seq = f_in['data']
+	mean_img = kwargs['mean_img']
+
+	##initialize save files
+	test_seq = full_seq[0,1,0,0,starty:endy,startx:endx]
+	models = h5py.File(savedir+'{}_models-ev{}-KLIP.h5'.format(filename,num_ev), 'w')
+	subtracteds = h5py.File(savedir+'{}_subtracteds-ev{}-KLIP.h5'.format(filename,num_ev), 'w')
+	models.create_dataset('data', data=np.zeros((0,np.shape(test_seq)[0],np.shape(test_seq)[1])), compression="gzip", chunks=True,maxshape=(None, None, None))
+	models.close()
+	subtracteds.create_dataset('data', data=np.zeros((0,np.shape(test_seq)[0],np.shape(test_seq)[1])), compression="gzip", chunks=True,maxshape=(None, None, None))
+	subtracteds.close()
+
+	#reopen for adding on
+	models = h5py.File(savedir+'{}_models-ev{}-KLIP.h5'.format(filename,num_ev), 'a')
+	subtracteds = h5py.File(savedir+'{}_subtracteds-ev{}-KLIP.h5'.format(filename,num_ev), 'a')
+
+	#add attributes from original hdf5 simulation
+	att_count = 0
+	for key in f_in.attrs:
+		models.attrs[key] = f_in.attrs[key]
+		subtracteds.attrs[key] = f_in.attrs[key]
+		att_count = att_count+1
+	print(att_count,'attributes written to file')
+
+	i=0
+
+	for t in range(0,np.shape(full_seq)[0]):	
+		target_seq = full_seq[0,1,0,:,starty:endy,startx:endx]
+		target_seq = np.abs(target_seq)**2
+		target_seq = np.sum(target_seq,axis=1)
+		#print(np.shape(target_seq))
+		#print(np.shape(mean_img))
+
+		#choose target image - we're going with one, the "central" image (2 in a series of 5 lags)
+		ms_target_seq = target_seq - mean_img
+		seq_len,img_shape,img_shape2 = np.shape(target_seq)
+
+		#choose modes
+		chosen_ev = np.reshape(P0[0:num_ev],[num_ev,img_shape*img_shape]) 
+		chosen_evals = ev0[0:num_ev]
+
+		#get image coefficients
+		coeffs = np.dot(chosen_ev,np.reshape(target_seq,seq_len*img_shape**2)) 
+
+		#create model
+		psf_model = np.reshape(np.dot(coeffs,chosen_ev),[img_shape,img_shape]) 
+		central_img = target_seq[central_index]
+		central_model = psf_model[central_index]
+		subtracted = central_img-central_model
+
+		####okay, this will get out of hand in memory VERY fast! need to write out iteratively to hdf5
+		index = models["data"].shape[0]
+		models["data"].resize((models["data"].shape[0] + 1), axis = 0)
+		models["data"][index,:,:] = central_model
+		subtracteds["data"].resize((subtracteds["data"].shape[0] + 1), axis = 0)
+		subtracteds["data"][index,:,:] = subtracted
+			
+		i=i+1
+
+	print('models saved at {}_models-ev{}-seq{}.h5'.format(filename,num_ev,seq_len))
+	models.close()
+	print('subtracteds saved at {}_subtracteds-ev{}-seq{}.h5'.format(filename,num_ev,seq_len))
+	subtracteds.close()
+	f_in.close()
+
+	print('klip done, beginning averaging process')
+	##compute iterative mean on subtracteds
+	averaged = iter_mean('{}_subtracteds-ev{}-seq{}.h5'.format(filename,num_ev,seq_len),starty,endy,startx,endx,secondary=True) ##start and end should be global variables when running this~ not the best implementation?
+	print('average residuals calculated -- not yet saved on disk')
+
+	return averaged
+
 def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,256,0,256],iterative=True,return_all=False,**kwargs):
 	"""given a set of eigenvalues and eigenvectors, this runs the rest of KLIP over the *whole* image sequence (not just one image subsequence.
 	returns the averaged residuals, and also the whole set of subtracted images and model images. IF USING ITERATIVE, PLEASE SUPPLY MEAN FROM ITERATIVE COV CALC AS KWARG 'mean_img'"""
@@ -346,6 +427,7 @@ def model_grid(filename,nlags,nmodes,window=[0,256,0,256],legacy=False):
 
 	#running over multiple lags, multiple modes
 	for nlag in nlags:
+
 		print('creating stcov matrix for {} lags'.format(nlag))
 		stcov_matrix = iter_stcov_matrix(filename,nlag,starty,endy,startx,endx)
 
@@ -381,20 +463,36 @@ def model_grid(filename,nlags,nmodes,window=[0,256,0,256],legacy=False):
 		modes = h5py.File(savedir+'{}_avg-res_{}-lags.h5'.format(name,nlag), 'a')
 		averaged = []
 
-		for mode in nmodes:
-			if mode=='nan' or np.isnan(mode)==True or mode=='np.nan':
-				pass
-			else:
-				print('running stKLIP for {} modes'.format(mode))
-				avg_res = stKLIP(ev0,P0,filename,num_ev=mode,seq_len=nlag,mean_img=mean,window=[starty,endy,startx,endx])
-				print('stKLIP completed for {} modes'.format(mode))
+		if nlag==0:
+			for mode in nmodes:
+				if mode=='nan' or np.isnan(mode)==True or mode=='np.nan':
+					pass
+				else:
+					print('running stKLIP for {} modes'.format(mode))
+					avg_res = KLIP(ev0,P0,filename,num_ev=mode,mean_img=mean,window=[starty,endy,startx,endx])
+					print('KLIP completed for {} modes'.format(mode))
 
-				###add slice to file; somehow include KL mode in header?
-				index = modes["data"].shape[0]
-				modes["data"].resize((modes["data"].shape[0] + 1), axis = 0)
-				modes["data"][index,:,:] = avg_res
-				print('slice for {} modes saved to disk'.format(mode))
-				averaged.append(avg_res)
+					###add slice to file; somehow include KL mode in header?
+					index = modes["data"].shape[0]
+					modes["data"].resize((modes["data"].shape[0] + 1), axis = 0)
+					modes["data"][index,:,:] = avg_res
+					print('slice for {} modes saved to disk'.format(mode))
+					averaged.append(avg_res)
+		else:
+			for mode in nmodes:
+				if mode=='nan' or np.isnan(mode)==True or mode=='np.nan':
+					pass
+				else:
+					print('running stKLIP for {} modes'.format(mode))
+					avg_res = stKLIP(ev0,P0,filename,num_ev=mode,seq_len=nlag,mean_img=mean,window=[starty,endy,startx,endx])
+					print('stKLIP completed for {} modes'.format(mode))
+
+					###add slice to file; somehow include KL mode in header?
+					index = modes["data"].shape[0]
+					modes["data"].resize((modes["data"].shape[0] + 1), axis = 0)
+					modes["data"][index,:,:] = avg_res
+					print('slice for {} modes saved to disk'.format(mode))
+					averaged.append(avg_res)
 
 		print('LAG {} FINISHED - averaged residuals all saved to file at {}_avg-res_{}-lags.h5'.format(nlag,name,nlag))
 

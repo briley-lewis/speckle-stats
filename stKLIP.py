@@ -10,10 +10,10 @@ from photutils import aperture_photometry
 sys.path.insert(0,'/u/scratch/b/blewis34/medis_data/observations/complex-fields/')
 sys.path.insert(0,'/u/home/b/blewis34/speckle-stats/')
 
-#savedir='/u/scratch/b/blewis34/stKLIP/'
-#datadir='/u/scratch/b/blewis34/medis_data/observations/complex-fields/'
-datadir='../Outputs/'
-savedir='../Outputs/'
+savedir='/u/scratch/b/blewis34/stKLIP/'
+datadir='/u/scratch/b/blewis34/medis_data/observations/complex-fields/'
+#datadir='../Outputs/'
+#savedir='../Outputs/'
 
 ##### basic functions
 

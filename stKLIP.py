@@ -30,7 +30,7 @@ def load_full(filename,window=[0,256,0,256]):
 	intensities = np.abs(focal_plane)**2
 	intensities = np.sum(intensities,axis=1) #sum along wavefront axis, so that you get both planet and star signal 
 
-	print('data imported')
+	#print('data imported')
 	return intensities
 
 def iter_mean(f_in,starty,endy,startx,endx,secondary=False):
@@ -142,12 +142,12 @@ def iter_stcov_matrix(filename,nlag,starty,endy,startx,endx):
 		cov = iter_cov2d(filename,0,starty,endy,startx,endx,return_mean=False,verbose=False)
 	else:
 		cov = np.full((nlag*npix,nlag*npix),np.nan) ###consider writing to hdf5 file, would enable larger windows and larger nlag. only worthwhile if using dask for eigh though
-		print('cov matrix shell made')
+		#print('cov matrix shell made')
 		i = 0
 		j = 1
 		#start with diagonals
 		while j<nlag+1:
-			print('covering indices',i*npix,'to',j*npix)
+			#print('covering indices',i*npix,'to',j*npix)
 			cov[i*npix:j*npix,i*npix:j*npix] = iter_cov2d(filename,0,starty,endy,startx,endx,return_mean=False,verbose=False)
 			i = i+1
 			j = j+1
@@ -155,14 +155,15 @@ def iter_stcov_matrix(filename,nlag,starty,endy,startx,endx):
 		total = npix*nlag
 		for k in range(0,nlag):
 			j=1
-			print('k',k,'completed')
+			#print('k',k,'completed')
 			while ((j+k)*npix)<(npix*nlag):
-				print('covering indices',(j-1)*npix,'to',(j+k)*npix,'and',(j+k)*npix,'to',(j+k+1)*npix)
+				#print('covering indices',(j-1)*npix,'to',(j+k)*npix,'and',(j+k)*npix,'to',(j+k+1)*npix)
 				#print(np.shape(cov[(j-1)*npix:j*npix,(j+k)*npix:(j+k+1)*npix]))
 				cov_now = iter_cov2d(filename,(k+1),starty,endy,startx,endx,return_mean=False,verbose=False)
 				cov[(j-1)*npix:j*npix,(j+k)*npix:(j+k+1)*npix] = cov_now
 				cov[(j+k)*npix:(j+k+1)*npix,(j-1)*npix:j*npix] = cov_now
 				j = j+1
+	#print('cov matrix made')
 
 	return cov
 
@@ -172,9 +173,9 @@ def eigendecomp(cov,max_ev):
 		max_ev = np.shape(cov)[0]
 	first_ev = np.shape(cov)[0]-1
 	last_ev = np.shape(cov)[0]-max_ev
-	print('calculating eigenvectors',first_ev,'through',last_ev)
+	#print('calculating eigenvectors',first_ev,'through',last_ev)
 	ev0, P0 = eigh(cov,subset_by_index=[last_ev,first_ev])
-	print('eigendecomposition complete')
+	#print('eigendecomposition complete')
 
 	#reverse arrays so they're in descending order
 	ev0 = ev0[::-1]
@@ -182,7 +183,7 @@ def eigendecomp(cov,max_ev):
 	P0 = P0.T
 	#P0.shape = max_ev,nl,nx,ny
 	#print(np.shape(P0))
-	print('rearrangement complete')
+	#print('rearrangement complete')
 
 	return ev0,P0
 
@@ -194,7 +195,7 @@ def KLIP(ev0,P0,f_in,num_ev=10,window=[0,256,0,256],**kwargs):
 
 	filename = f_in.split('.')[0]
 	f_in = h5py.File(datadir+f_in, 'r')
-	print('file opened for KLIP')
+	#print('file opened for KLIP')
 	full_seq = f_in['data']
 	mean_img = kwargs['mean_img']
 
@@ -217,32 +218,32 @@ def KLIP(ev0,P0,f_in,num_ev=10,window=[0,256,0,256],**kwargs):
 		models.attrs[key] = f_in.attrs[key]
 		subtracteds.attrs[key] = f_in.attrs[key]
 		att_count = att_count+1
-	print(att_count,'attributes written to file')
+	#print(att_count,'attributes written to file')
 
 	i=0
 
 	for t in range(0,np.shape(full_seq)[0]):	
-		target_seq = full_seq[0,1,0,:,starty:endy,startx:endx]
+		target_seq = full_seq[t,1,0,:,starty:endy,startx:endx]
 		target_seq = np.abs(target_seq)**2
-		target_seq = np.sum(target_seq,axis=1)
+		target_seq = np.sum(target_seq,axis=0)
 		#print(np.shape(target_seq))
 		#print(np.shape(mean_img))
 
 		#choose target image - we're going with one, the "central" image (2 in a series of 5 lags)
 		ms_target_seq = target_seq - mean_img
-		seq_len,img_shape,img_shape2 = np.shape(target_seq)
+		img_shape,img_shape2 = np.shape(target_seq)
 
 		#choose modes
 		chosen_ev = np.reshape(P0[0:num_ev],[num_ev,img_shape*img_shape]) 
 		chosen_evals = ev0[0:num_ev]
 
 		#get image coefficients
-		coeffs = np.dot(chosen_ev,np.reshape(target_seq,seq_len*img_shape**2)) 
+		coeffs = np.dot(chosen_ev,np.reshape(target_seq,img_shape**2)) 
 
 		#create model
 		psf_model = np.reshape(np.dot(coeffs,chosen_ev),[img_shape,img_shape]) 
-		central_img = target_seq[central_index]
-		central_model = psf_model[central_index]
+		central_img = target_seq
+		central_model = psf_model
 		subtracted = central_img-central_model
 
 		####okay, this will get out of hand in memory VERY fast! need to write out iteratively to hdf5
@@ -254,15 +255,15 @@ def KLIP(ev0,P0,f_in,num_ev=10,window=[0,256,0,256],**kwargs):
 			
 		i=i+1
 
-	print('models saved at {}_models-ev{}-seq{}.h5'.format(filename,num_ev,seq_len))
+	print('models saved at {}_models-ev{}-KLIP.h5'.format(filename,num_ev))
 	models.close()
-	print('subtracteds saved at {}_subtracteds-ev{}-seq{}.h5'.format(filename,num_ev,seq_len))
+	print('subtracteds saved at {}_subtracteds-ev{}-KLIP.h5'.format(filename,num_ev))
 	subtracteds.close()
 	f_in.close()
 
 	print('klip done, beginning averaging process')
 	##compute iterative mean on subtracteds
-	averaged = iter_mean('{}_subtracteds-ev{}-seq{}.h5'.format(filename,num_ev,seq_len),starty,endy,startx,endx,secondary=True) ##start and end should be global variables when running this~ not the best implementation?
+	averaged = iter_mean('{}_subtracteds-ev{}-KLIP.h5'.format(filename,num_ev),starty,endy,startx,endx,secondary=True) ##start and end should be global variables when running this~ not the best implementation?
 	print('average residuals calculated -- not yet saved on disk')
 
 	return averaged
@@ -331,7 +332,7 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,256,0,256],iterative=True,r
 		
 		filename = f_in.split('.')[0]
 		f_in = h5py.File(datadir+f_in, 'r')
-		print('file opened for stKLIP')
+		#print('file opened for stKLIP')
 		full_seq = f_in['data']
 		mean_img = kwargs['mean_img']
 
@@ -357,7 +358,7 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,256,0,256],iterative=True,r
 			models.attrs[key] = f_in.attrs[key]
 			subtracteds.attrs[key] = f_in.attrs[key]
 			att_count = att_count+1
-		print(att_count,'attributes written to file')
+		#print(att_count,'attributes written to file')
 
 		i=0
 		
@@ -393,21 +394,21 @@ def stKLIP(ev0,P0,f_in,num_ev=10,seq_len=5,window=[0,256,0,256],iterative=True,r
 			subtracted = (central_img-central_model)
 			subtracteds["data"].resize((subtracteds["data"].shape[0] + 1), axis = 0)
 			subtracteds["data"][index,:,:] = subtracted
-			print(np.shape(subtracteds["data"]))
+			#print(np.shape(subtracteds["data"]))
 			#print('central image',(i+central_index),'done')
 			
 			i=i+1
 	   
-		print('models saved at {}_models-ev{}-seq{}.h5'.format(filename,num_ev,seq_len))
+		#print('models saved at {}_models-ev{}-seq{}.h5'.format(filename,num_ev,seq_len))
 		models.close()
-		print('subtracteds saved at {}_subtracteds-ev{}-seq{}.h5'.format(filename,num_ev,seq_len))
+		#print('subtracteds saved at {}_subtracteds-ev{}-seq{}.h5'.format(filename,num_ev,seq_len))
 		subtracteds.close()
 		f_in.close()
 
-		print('stklip done, beginning averaging process')
+		#print('stklip done, beginning averaging process')
 		##compute iterative mean on subtracteds
 		averaged = iter_mean('{}_subtracteds-ev{}-seq{}.h5'.format(filename,num_ev,seq_len),starty,endy,startx,endx,secondary=True) ##start and end should be global variables when running this~ not the best implementation?
-		print('average residuals calculated -- not yet saved on disk')
+		#print('average residuals calculated -- not yet saved on disk')
 
 		return averaged
 
@@ -464,6 +465,7 @@ def model_grid(filename,nlags,nmodes,window=[0,256,0,256],legacy=False):
 		averaged = []
 
 		if nlag==0:
+			print('running KLIP instead!')
 			for mode in nmodes:
 				if mode=='nan' or np.isnan(mode)==True or mode=='np.nan':
 					pass

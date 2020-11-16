@@ -62,7 +62,7 @@
   echo ""
 
 #PUT SIM PARAMS HERE
-  /usr/bin/time python3 /u/home/b/blewis34/speckle-stats/stKLIP.py MEDIS_30sec_cn16_Oct2020.h5 0,1,2,3,4,5,6,8,10 0,1,2,3,4,5,6,7,10,15,20,30,50,60,75,85,100,110,125,140,150,160,175,185,200,300 75,175,100,200 >& /u/home/b/blewis34/job-outputs/stKLIP.output.$JOB_ID
+  /usr/bin/time python3 /u/home/b/blewis34/speckle-stats/stKLIP.py MEDIS_30sec_cn16_Oct2020.h5 8,10 0,1,2,3,4,5,6,7,10,15,20,30,50,60,75,85,100,110,125,140,150,160,175,185,200,300 75,175,100,200 >& /u/home/b/blewis34/job-outputs/stKLIP.output.$JOB_ID
 #
   echo ""
   echo "script finished at:  "` date `
